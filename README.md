@@ -1,7 +1,9 @@
 # pyTetris
+
 pygame implementation of a Tetris clone.
 
-Pre-repository changelog:
+# Pre-repository changelog:
+
 InDev 0.0.0: Implemented basic Menu system.
 InDev 0.0.1: Created Block and Shape classes.
 InDev 0.0.2: Created Grid class and fixed alignment of the block squares.
