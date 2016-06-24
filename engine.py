@@ -17,6 +17,9 @@ class User (object):
 		self.gametype = 'arcade'
 		self.cleartype = 2
 
+		self.score = 0
+		self.debug = True
+
 class Tetris (object):
 	""" 
 		The actual game in itself.
@@ -77,10 +80,16 @@ class Tetris (object):
 
 	def set_shape (self, form):
 		# Gives the player a certain shape when debug mode is active.
-		pass
+		self.frame = 1
+		self.floor_kick = True
+		self.hold_lock = False
+		self.freeshape = Shape(form)
+		self.newshape = self.freeshape.copy()
+		self.ghostshape = self.freeshape.copy(ghost = True)
 
 	def next_shape (self):
 		# Sets the next shape to be the active one, and resets all flags associated with the previous one.
+		self.frame = 1
 		self.floor_kick = True
 		self.hold_lock = False
 		self.freeshape = self.nextshapes.pop(0)
@@ -123,6 +132,21 @@ class Tetris (object):
 				self.hold_shape()
 			elif event.key == pygame.K_ESCAPE: # Pause game
 				self.paused = True
+			if self.user.debug:
+				if event.key == pygame.K_1:
+					self.set_shape(0)
+				elif event.key == pygame.K_2:
+					self.set_shape(1)
+				elif event.key == pygame.K_3:
+					self.set_shape(2)
+				elif event.key == pygame.K_4:
+					self.set_shape(3)
+				elif event.key == pygame.K_5:
+					self.set_shape(4)
+				elif event.key == pygame.K_6:
+					self.set_shape(5)
+				elif event.key == pygame.K_7:
+					self.set_shape(6)
 		return event
 
 	def eval_input_move (self, event):
@@ -371,9 +395,8 @@ class Tetris (object):
 		for block in self.newshape.blocks:
 			# If collision occurs due to the gravity timer running out:
 			if self.collision_test(block, self.newshape):
-				# Copy shape to grid and clear lines that fill.
+				# Copy shape to grid.
 				self.shape_to_grid()
-				self.grid.clear_lines(self.user.cleartype, self.storedshape, self.nextshapes)
 				break
 		else:
 			self.newshape.copy_to(self.freeshape)
@@ -418,7 +441,8 @@ class Tetris (object):
 			self.newshape.translate((0, 1))
 		# Evaluate gravity and clear filled lines.
 		self.gravity_collision()
-		# Display relevant shapes
+		self.grid.clear_lines(self.user.cleartype, self.storedshape, self.nextshapes)
+		# Display relevant shapes.
 		self.freeshape.display()
 		for i in range(3):
 			self.nextshapes[i].display((-25, 80 + (i * 80)), True)

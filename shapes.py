@@ -123,7 +123,7 @@ class Shape (object):
 			shapetext = 'L'
 		else:
 			shapetext = 'Temporary Aggregate'
-		return shapetext + " Tetromino rotated " + str(self.state) + " times CW at" + str(self.pos)
+		return shapetext + " Tetromino with blocks at: " + str(self.blocks)
 
 	def copy (self, ghost = False):
 		# Copy this shape, creating a new Shape object in the process.
@@ -252,12 +252,23 @@ class Grid (PositionedSurface):
 
 			In both sticky and cascade clearing, the groups will fall as if hard dropped by the user, then 
 			the lines will be re-evaluated to see if another clear happened.
+
+			Note: Does not work properly during cascading clear yet if the situation is similar to this:
+			 OOOOOOO  
+			IOO 
+			IO  OOOOOO
+			IOO    OOO
+			IXXXXXXXXX < line cleared
+			O      OOO
+			O   OOOOOO
 		"""
 		# Initialize the cleared flag to enter the while loop.
 		cleared = True
 		while cleared:
 			# Set the cleared flag to False to represent no lines being cleared yet.
 			cleared = False
+			# Base row is the bottom-most row where a line clear occurs.
+			base_row = 0
 			# Test if there is a full row, starting from the bottom.
 			for i in range(21, -1, -1):
 				full_row = True
@@ -267,6 +278,9 @@ class Grid (PositionedSurface):
 						break
 
 				if full_row:
+					# If the cleared row has a higher index than the base row value, the cleared row is now the base row.
+					if i > base_row:
+						base_row = i
 					# Don't check for cleared lines and continue the loop if method is naive.
 					if method > 0:
 						cleared = True
@@ -292,39 +306,53 @@ class Grid (PositionedSurface):
 			if method > 0:
 				# If the method is sticky or cascade, check if at least one line was cleared.
 				if cleared:
-					# Creates a list of temporary shapes when lines are cleared that will fall individually.
-					tempshapes = [ ]
+					# For each row, cut a set of temporary shapes from it to allow to fall.
+					locked_shapes = True
+					while locked_shapes:
+						for i in range(base_row - 1, -1, -1):
+							# locked_shapes is True when one of the shapes in the row is blocked from falling by another shape.
+							locked_shapes = False
+							tempshapes = [ ]
+							for j in range(2, 12):
+								if self.cells[i][j] is not None:
+									# Create new blank temporary shape.
+									tempshape = Shape(7)
+									locked = False
+									# Cut connected blocks from grid to the shape.
+									if method == 1:
+										# Perform a blind flood fill if the method is sticky.
+										self.flood_fill(tempshape.blocks, (i, j))
+									elif method == 2:
+										# Perform a flood fill considering which blocks are linked if the method is cascade.
+										self.link_fill(tempshape.blocks, (i, j))
+										for block in tempshape.blocks:
+											# If the block being tested isn't connected to the block below it, then the shape it's a part of is blocked.
+											if 3 not in block.links and self.cells[block.relpos[1] + tempshape.pos[1] + 1][block.relpos[0] + tempshape.pos[0]] is not None:
+												locked = True
+												locked_shapes = True
+												# Cut the shape back to the matrix.
+												for block in tempshape.blocks:
+													self.cells[block.relpos[1] + tempshape.pos[1]][block.relpos[0] + tempshape.pos[0]] = block
+												break
+									# Add this temprary shape to the list if it's not blocked.
+									if not locked:
+										tempshapes.append(tempshape)
 
-					for i in range(21, 1, -1):
-						for j in range(2, 12):
-							if self.cells[i][j] is not None:
-								# Create new blank temporary shape.
-								tempshape = Shape(7)
-								# Cut connected blocks from grid to the shape.
-								if method == 1:
-									# Perform a blind flood fill if the method is sticky.
-									self.flood_fill(tempshape.blocks, (i, j))
-								elif method == 2:
-									# Perform a flood fill considering which blocks are linked if the method is cascade.
-									self.link_fill(tempshape.blocks, (i, j))
-								# Add this temprary shape to the list.
-								tempshapes.append(tempshape)
-
-					# If there is at least one temporary shape created, drop them all.
-					if len(tempshapes) > 0:
-						for shape in tempshapes:
-							# Uses similar code to Tetris.calculate_ghost()
-							collision = False
-							while not collision: 
-								shape.translate((0, 1))	
-								for block in shape.blocks:
-									if self.cells[block.relpos[1] + shape.pos[1]][block.relpos[0] + shape.pos[0]] is not None:
-										collision = True
-										shape.translate((0, -1))
-										# Uses similar code to Tetris.shape_to_grid()
-										for oldblock in shape.blocks:
-											self.cells[oldblock.relpos[1] + shape.pos[1]][oldblock.relpos[0] + shape.pos[0]] = Block([oldblock.relpos[0] + shape.pos[0], oldblock.relpos[1] + shape.pos[1]], oldblock.color, oldblock.links)
-										break
+							# If there is at least one temporary shape created, drop them all.
+							if len(tempshapes) > 0:
+								for shape in tempshapes:
+									# Uses similar code to Tetris.calculate_ghost()
+									collision = False
+									while not collision: 
+										shape.translate((0, 1))	
+										for block in shape.blocks:
+											if self.cells[block.relpos[1] + shape.pos[1]][block.relpos[0] + shape.pos[0]] is not None:
+												collision = True
+												shape.translate((0, -1))
+												# Uses similar code to Tetris.shape_to_grid()
+												for oldblock in shape.blocks:
+													self.cells[oldblock.relpos[1] + shape.pos[1]][oldblock.relpos[0] + shape.pos[0]] = Block([oldblock.relpos[0] + shape.pos[0], oldblock.relpos[1] + shape.pos[1]], oldblock.color, oldblock.links)
+												break
 
 					# Display intermediate drops so the user can see the combo.
 					for i in range(3):

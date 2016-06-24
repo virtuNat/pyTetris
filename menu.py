@@ -115,14 +115,15 @@ class PauseMenu (Menu):
 		self.set(center = screen.get_rect().center)
 		self.font = pygame.freetype.Font(None, 25)
 		
-		tmargin = 10
+		tmargin = 20
 		hmargin = 15
-		spacing = 15
+		spacing = 5
 		height = 60
 
 		self.selections = [[MenuSelection(self, 'resume', 'Resume Game', (self.rect.left + hmargin, self.rect.top + tmargin), (self.rect.width - 2 * hmargin, height)),
-							MenuSelection(self, 'options', 'Options', (self.rect.left + hmargin, self.rect.top + tmargin + spacing + height), (self.rect.width - 2 * hmargin, height)),
-							MenuSelection(self, 'quit', 'Return to Menu', (self.rect.left + hmargin, self.rect.top + tmargin + 2 * (spacing + height)), (self.rect.width - 2 * hmargin, height))]]
+							MenuSelection(self, 'restart', 'Restart Game', (self.rect.left + hmargin, self.rect.top + tmargin + spacing + height), (self.rect.width - 2 * hmargin, height)),
+							MenuSelection(self, 'options', 'Options', (self.rect.left + hmargin, self.rect.top + tmargin + 2 * (spacing + height)), (self.rect.width - 2 * hmargin, height)),
+							MenuSelection(self, 'quit', 'Return to Menu', (self.rect.left + hmargin, self.rect.top + tmargin + 3 * (spacing + height)), (self.rect.width - 2 * hmargin, height))]]
 		self.set_range()
 
 	def set_bg (self, bg):
@@ -134,6 +135,10 @@ class PauseMenu (Menu):
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
 				if self.selections[self.selection[0]][self.selection[1]].action == 'resume':
 					self.user.state = 'in_game'
+					self.reset()
+				if self.selections[self.selection[0]][self.selection[1]].action == 'restart':
+					self.user.state = 'in_game'
+					self.game.set_data()
 					self.reset()
 				elif self.selections[self.selection[0]][self.selection[1]].action == 'quit':
 					self.user.state = 'main_menu'
