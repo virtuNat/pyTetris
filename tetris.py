@@ -14,7 +14,7 @@ def main ():
 	pause_menu.game = game
 
 	while user.state != 'quit':
-		clock.tick(60)
+		clock.tick(30)
 		if user.state == 'main_menu':
 			main_menu.run()
 		elif user.state == 'play_menu':

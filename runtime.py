@@ -24,13 +24,13 @@ def cos (angle):
 	return math.cos(math.radians(angle))
 
 def hyp_area (p1, p2):
-	# The area of a square whose side is a line segment bounded by p1 and p2.
+	# The area of a square whose side is the length of the line segment bounded by p1 and p2.
 	# Used for comparing distances without dealing with a square root operation.
 	return ((p1[0] - p2[0]) ** 2, (p1[1] - p2[1]) ** 2); # c^2 = a^2 + b^2
 
 def get_ang (p1, p2):
 	# Angle from p1 to p2.
-	return math.degrees(math.atan2(p2[1] - p1[1], p2[0] - p1[0]))
+	return math.degrees(math.atan2(p2[1] - p1[1], p2[0] - p1[0])) # Positive is usually clockwise.
 
 def get_dist (p1, p2):
 	# The absolute shortest distance between p1 and p2.
@@ -197,8 +197,8 @@ class Menu (AnimatedSprite):
 		self.left = False
 		self.right = False
 		self.moved = False
-		self.basetime = 30
-		self.shortime = 6
+		self.basetime = 15
+		self.shortime = 3
 		self.movetime = self.basetime
 
 		self.selections[self.selection[0]][self.selection[1]].set_select(False)

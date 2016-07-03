@@ -18,7 +18,7 @@ class User (object):
 		self.cleartype = 2
 
 		self.score = 0
-		self.debug = True
+		self.debug = False
 
 class Tetris (object):
 	""" 
@@ -64,8 +64,8 @@ class Tetris (object):
 		self.soft_drop = False # Tetromino drops faster if True
 		self.hold_lock = False # Can't swap Held pieces if True
 
-		self.normdelay = 30 # Number of frames between the ones where the tetromino falls by one block.
-		self.softdelay = self.normdelay // 15 # ^ during soft drop.
+		self.normdelay = 15 # Number of frames between the ones where the tetromino falls by one block.
+		self.softdelay = 0 # ^ during soft drop.
 
 		self.frame = 0 # Frame counter
 		self.delay = self.normdelay # Currently used delay
@@ -78,30 +78,28 @@ class Tetris (object):
 			gen_list.append(Shape(shape_list.pop(random.randint(0, len(shape_list) - 1))))
 		return gen_list
 
-	def set_shape (self, form):
+	def set_shape (self, shape):
 		# Gives the player a certain shape when debug mode is active.
 		self.frame = 1
 		self.floor_kick = True
 		self.hold_lock = False
-		self.freeshape = Shape(form)
+		if isinstance(shape, Shape):
+			self.freeshape = shape
+		else:
+			self.freeshape = Shape(shape)
 		self.newshape = self.freeshape.copy()
 		self.ghostshape = self.freeshape.copy(ghost = True)
 
 	def next_shape (self):
 		# Sets the next shape to be the active one, and resets all flags associated with the previous one.
-		self.frame = 1
-		self.floor_kick = True
-		self.hold_lock = False
-		self.freeshape = self.nextshapes.pop(0)
-		self.newshape = self.freeshape.copy()
-		self.ghostshape = self.freeshape.copy(ghost = True)
+		self.set_shape(self.nextshapes.pop(0))
 		if len(self.nextshapes) < 7:
 			self.nextshapes.extend(self.generate_shapes())
 
 	def shape_to_grid (self):
 		# Cut the free shape to the grid, then generate a new one.
 		for oldblock in self.freeshape.blocks:
-			self.grid.cells[oldblock.relpos[1] + self.freeshape.pos[1]][oldblock.relpos[0] + self.freeshape.pos[0]] = Block([oldblock.relpos[0] + self.freeshape.pos[0], oldblock.relpos[1] + self.freeshape.pos[1]], oldblock.color, oldblock.links)
+			self.grid.cells[oldblock.relpos[1] + self.freeshape.pos[1]][oldblock.relpos[0] + self.freeshape.pos[0]] = Block([oldblock.relpos[0] + self.freeshape.pos[0], oldblock.relpos[1] + self.freeshape.pos[1]], oldblock.color, oldblock.links, fallen = True)
 		self.next_shape()
 
 	def hold_shape (self):
@@ -147,6 +145,10 @@ class Tetris (object):
 					self.set_shape(5)
 				elif event.key == pygame.K_7:
 					self.set_shape(6)
+				elif event.key == pygame.K_9:
+					self.grid.add_garbage()
+				elif event.key == pygame.K_0:
+					self.grid.set_cells()
 		return event
 
 	def eval_input_move (self, event):
