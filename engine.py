@@ -17,8 +17,49 @@ class User (object):
 		self.gametype = 'arcade'
 		self.cleartype = 2
 
+		self.debug = True
+
+		self.drop_score = 5 # The base score added when a block lands.
+		self.hard_factor = 3 # The multiplier if a block is hard-dropped.
+		self.hard_flag = False # True if the hard_factor is to be used.
+		self.line_score = 100 # The base score added when a line is cleared.
+		self.line_factor = 0.2 # The added percentage for each line cleared in one drop.
+		self.cascade_factor = 1.15 # The multiplier for each set of lines cleared successively. Exponential.
+		self.twist_factor = 2.0 # The multiplier if the starting piece was twisted in.
+		self.twist_flag = False # True if the tetromino twisted into place.
+		self.combo_factor = 1.05 # The multiplier for subsequent drop clears.
+
+		self.current_combo = 1.0 # The current combo multiplier.
+
 		self.score = 0
-		self.debug = False
+		self.last_score = 0
+
+	def add_score (self, value):
+		self.score += value
+
+	def eval_drop_score (self):
+		if self.hard_flag:
+			self.add_score(self.drop_score * self.hard_factor)
+			self.hard_flag = False
+		else:
+			self.add_score(self.drop_score)
+
+	def predict_score (self, lines):
+		if len(lines) > 1 and lines[-1] == 0:
+			lines.pop()
+		temp_score = 0
+		for line in lines:
+			temp_score += (self.line_score * line) * ((1 - self.line_factor) + (self.line_factor * line))
+		temp_score *= (self.cascade_factor ** (len(lines) - 1))
+		if self.twist_flag:
+			return temp_score * self.current_combo * self.twist_factor
+		else:
+			return temp_score * self.current_combo
+
+	def evaluate_clear_score (self, lines):
+		temp_score = self.predict_score(lines)
+		self.add_score(temp_score)
+		self.last_score = temp_score
 
 class Tetris (object):
 	""" 
@@ -35,10 +76,10 @@ class Tetris (object):
 		self.user = user
 		self.pause_menu = pause_menu
 
-		self.bg = pygame.Surface(screen.get_size())
-		self.bg.fill((0, 0, 0))
+		self.bg = game_bg
+		self.font = pygame.freetype.Font(None, 25)
 
-		self.grid = Grid()
+		self.grid = Grid(user)
 		self.set_data()
 
 		print "LEFT and RIGHT arrow keys to shift tetromino left and right."
@@ -69,6 +110,8 @@ class Tetris (object):
 
 		self.frame = 0 # Frame counter
 		self.delay = self.normdelay # Currently used delay
+
+		self.dropped = False
 
 	def generate_shapes (self):
 		# Generate a 'bag' of one of each tetromino shape in random order.
@@ -161,8 +204,11 @@ class Tetris (object):
 			elif event.key == pygame.K_DOWN: # Toggle soft drop
 				self.soft_drop = True
 			elif event.key == pygame.K_SPACE: # Hard drop
+				self.user.hard_flag = True
 				self.ghostshape.copy_to(self.freeshape)
 				self.shape_to_grid()
+				self.user.eval_drop_score()
+				self.dropped = True
 			return event.key
 		elif event.type == pygame.KEYUP:
 			if event.key == pygame.K_DOWN:
@@ -393,12 +439,32 @@ class Tetris (object):
 			self.newshape.copy_to(self.freeshape)
 
 	def gravity_collision (self):
+		# Check if position is as a result of a twist.
+		self.user.twist_flag = True
+		self.newshape.translate((0, -2))
+		for block in self.newshape.blocks:
+			if self.collision_test(block, self.newshape):
+				break
+		else: self.user.twist_flag = False
+		self.newshape.translate((-1, 1))
+		for block in self.newshape.blocks:
+			if self.collision_test(block, self.newshape):
+				break
+		else: self.user.twist_flag = False
+		self.newshape.translate((2, 0))
+		for block in self.newshape.blocks:
+			if self.collision_test(block, self.newshape):
+				break
+		else: self.user.twist_flag = False
+		self.newshape.translate((-1, 1))
 		# Separate check during falling period.
 		for block in self.newshape.blocks:
 			# If collision occurs due to the gravity timer running out:
 			if self.collision_test(block, self.newshape):
 				# Copy shape to grid.
 				self.shape_to_grid()
+				self.user.eval_drop_score()
+				self.dropped = True
 				break
 		else:
 			self.newshape.copy_to(self.freeshape)
@@ -441,15 +507,29 @@ class Tetris (object):
 			self.frame = 0
 		if self.frame == 0:
 			self.newshape.translate((0, 1))
-		# Evaluate gravity and clear filled lines.
+			self.dropped = False
+		# Evaluate gravity.
 		self.gravity_collision()
-		self.grid.clear_lines(self.user.cleartype, self.storedshape, self.nextshapes)
+		# Clear lines.
+		self.grid.clear_lines(self.user.cleartype, self.dropped, self.storedshape, self.nextshapes)
+		# Reset flags pertaining to dropped state of the tetromino.
+		if self.frame == 1:
+			self.user.twist_flag = False
+		# Display current score.
+		score_text, score_rect = self.font.render(str(int(self.user.score)), (255, 255, 255))
+		score_rect.bottomright = (790, 590)
+		screen.blit(score_text, score_rect)
+		# Display score from last clear.
+		prescore, prescore_rect = self.font.render(str(int(self.user.last_score)) + '!', (255, 255, 255))
+		prescore_rect.bottomright = (790, 560)
+		screen.blit(prescore, prescore_rect)
 		# Display relevant shapes.
 		self.freeshape.display()
 		for i in range(3):
 			self.nextshapes[i].display((-25, 80 + (i * 80)), True)
 		if self.storedshape is not None:
 			self.storedshape.display((475, 80), True)
+
 		# Pause game after evaluating frame.
 		if self.paused:
 			self.paused = False

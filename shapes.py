@@ -5,6 +5,8 @@ except ImportError, error:
 
 block_source = load_image('block.png', colorkey = (0, 0, 0))
 grid_source = load_image('grid.png', colorkey = (0, 0, 0))
+game_bg = pygame.Surface(screen.get_size())
+game_bg.fill((0, 0, 0))
 
 class Block (AnimatedSprite):
 	"""
@@ -207,8 +209,10 @@ class Grid (PositionedSurface):
 		Said invisible blocks mean that the only required checks per frame are collision detection checks.
 	"""
 
-	def __init__(self):
+	def __init__(self, user):
 		super(Grid, self).__init__(grid_source, center = screen.get_rect().center)
+		self.user = user
+		self.font = pygame.freetype.Font(None, 25)
 		self.set_cells()
 
 	def set_cells (self):
@@ -252,7 +256,7 @@ class Grid (PositionedSurface):
 			if 3 in oldlinks: # Down
 				self.link_fill(block_list, [index[0] + 1, index[1]])
 
-	def clear_lines (self, method, held, next):
+	def clear_lines (self, method, dropped, held, next):
 		"""
 			Clears lines when the free tetromino is cut to the grid.
 			method describes the 3 different styles of clearing available:
@@ -263,6 +267,8 @@ class Grid (PositionedSurface):
 			In both sticky and cascade clearing, the groups will fall as if they were free tetrominos, then 
 			the lines will be re-evaluated to see if another clear happened.
 		"""
+		lines_cleared = [0]
+
 		# Initialize the cleared flag to enter the while loop.
 		cleared = True
 		while cleared:
@@ -280,6 +286,7 @@ class Grid (PositionedSurface):
 						break
 				# Once a row is detected to be full, clear it.
 				if full_row:
+					lines_cleared[-1] += 1
 					# If a line is full below the indicated base_row, set base_row to that row.
 					if i > base_row: base_row = i
 					# Don't check for cleared lines and continue the loop if method is naive.
@@ -385,15 +392,31 @@ class Grid (PositionedSurface):
 							
 							# Display intermediate drops so the user can see the combo.
 							pygame.event.pump()
+							screen.blit(game_bg, (0, 0))
 							for i in range(3):
 								next[i].display((-25, 80 + (i * 80)), True)
 							if held is not None:
 								held.display((475, 80), True)
 							self.update()
+
+							score_text, score_rect = self.font.render(str(int(self.user.score)), (255, 255, 255))
+							score_rect.bottomright = (790, 590)
+							screen.blit(score_text, score_rect)
+
+							prescore, prescore_rect = self.font.render(str(int(self.user.predict_score(lines_cleared))) + '!', (255, 255, 255))
+							prescore_rect.bottomright = (790, 560)
+							screen.blit(prescore, prescore_rect)
+
 							pygame.display.flip()
 							pygame.time.wait(100)
 
 						# If the tempgrid list is empty, that means that all the blocks have fallen. Check if the fallen blocks caused another line clear.
+					lines_cleared.append(0)
+		if len(lines_cleared) > 1 or lines_cleared[0] > 0:
+			self.user.evaluate_clear_score(lines_cleared)
+			self.user.current_combo *= self.user.combo_factor
+		elif dropped:
+			self.user.current_combo = 1.0
 
 	def update (self):
 		# Display the grid background and constituent blocks.

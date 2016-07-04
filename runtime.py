@@ -168,7 +168,8 @@ class MenuSelection (AnimatedSprite):
 			self.image = self.sel_bg
 		else:
 			self.image = self.unsel_bg
-		self.image.blit(self.text, ((self.rect.width - self.text_rect.width) / 2, (self.rect.height - self.text_rect.height) / 2))
+		self.blit_to(screen)
+		screen.blit(self.text, (self.rect.left + (self.rect.width - self.text_rect.width) / 2, self.rect.top + (self.rect.height - self.text_rect.height) / 2))
 
 class Menu (AnimatedSprite):
 	"""
@@ -298,5 +299,4 @@ class Menu (AnimatedSprite):
 		for items in self.selections:
 			for item in items:
 				item.update()
-				item.blit_to(screen)
 		

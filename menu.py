@@ -89,10 +89,13 @@ class PlayMenu (Menu):
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
 				if self.selections[self.selection[0]][self.selection[1]].action == 'arcade':
 					self.user.state = 'in_game'
+					self.user.gametype = 'arcade'
 					self.reset()
+				"""
 				elif self.selections[self.selection[0]][self.selection[1]].action == 'time':
 					self.user.state = 'in_game'
 					self.reset()
+				"""
 			elif event.key == pygame.K_x or event.key == pygame.K_ESCAPE:
 				self.user.state = 'main_menu'
 
@@ -138,6 +141,8 @@ class PauseMenu (Menu):
 					self.reset()
 				if self.selections[self.selection[0]][self.selection[1]].action == 'restart':
 					self.user.state = 'in_game'
+					self.user.score = 0
+					self.user.last_score = 0
 					self.game.set_data()
 					self.reset()
 				elif self.selections[self.selection[0]][self.selection[1]].action == 'quit':
