@@ -36,10 +36,16 @@ InDev 0.1.5: Implemented cascade line clear, game is now functionally playable.
 
 InDev 0.2.0: Optimized code for Grid class line clear methods.
 
-InDev 0.2.1: Implemented rudimentary scoring system.
+# Post-repository changelog:
 
-InDev 0.2.2: 
+InDev 0.2.1: Fixed cascade clear bug that caused block domains to fall "through" each other when they should not.
 
-InDev 0.2.3: Fixed bug where rotating a piece allowed players to suspend it indefinitely. Fixed bug where I piece still caused crashes when wall-kicked from the right side due to block iteration order by padding the right side by one more.
+InDev 0.2.2: Implemented rudimentary scoring system. Polished cascade clearing.
 
-InDev 0.2.4: Optimized code per frame, now Grid.clear_lines() isn't run every frame, and the game doesn't wait for the frame counter to roll over when a piece is dropped. Fixed scoring system bugs relating to the above patch and this one.
+InDev 0.2.3: Expanded score system.
+
+InDev 0.2.4: 
+- Fixed bug where rotating a piece allowed players to suspend it indefinitely.
+- Fixed bug where I piece still caused crashes when wall-kicked from the right side due to block iteration order by padding the right side by one more.
+- Optimized code per frame, now Grid.clear_lines() isn't run every frame, and the game doesn't wait for the frame counter to roll over when a piece is dropped. 
+- Fixed scoring system bugs.
