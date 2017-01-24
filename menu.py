@@ -21,7 +21,6 @@ class MainMenu (Menu):
 		bg.fill((0, 255, 0))
 		super(MainMenu, self).__init__(user, bg)
 		self.set(midbottom = (screen.get_width() / 2, screen.get_rect().bottom - 25))
-		self.font = pygame.freetype.Font(None, 25)
 
 		hmargin = 15 # horizontal margin in pixels
 		tmargin = 20 # top margin in pixels
@@ -72,7 +71,6 @@ class PlayMenu (Menu):
 		bg.fill((0, 255, 64))
 		super(PlayMenu, self).__init__(user, bg)
 		self.set(midbottom = (screen.get_width() / 2, screen.get_rect().bottom - 100))
-		self.font = pygame.freetype.Font(None, 25)
 
 		hmargin = 20
 		spacing = 14
@@ -116,7 +114,6 @@ class PauseMenu (Menu):
 		bg.fill((0, 255, 0))
 		super(PauseMenu, self).__init__(user, bg)
 		self.set(center = screen.get_rect().center)
-		self.font = pygame.freetype.Font(None, 25)
 		
 		tmargin = 20
 		hmargin = 15

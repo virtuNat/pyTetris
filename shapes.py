@@ -212,18 +212,29 @@ class Grid (PositionedSurface):
 	def __init__(self, user):
 		super(Grid, self).__init__(grid_source, center = screen.get_rect().center)
 		self.user = user
-		self.font = pygame.freetype.Font(None, 25)
+		self.font = pygame.font.SysFont(None, 25)
 		self.set_cells()
 
 	def set_cells (self):
 		# Sets the Matrix to have nothing but its invisible blocks.
-		self.cells = [[Block([i, j], 0, fallen = True) if i < 2 or i > 11 or j > 21 else None for i in range(14)] for j in range(24)]
+		self.cells = [[Block([i, j], 0, fallen = True) if i < 2 or i > 11 or j > 21 else None for i in range(15)] for j in range(24)]
 
 	def add_garbage (self):
 		# Adds a garbage row.
 		hole = random.randint(2, 11)
-		# If fallen was set to false for the garbage blocks, they'd just clear themselves.
-		self.cells.insert(22, [Block([i, 22], 0, fallen = True) if i < 2 or i > 11 else None if i == hole else Block([i, 22], 7, fallen = True) for i in range(14)])
+		# Prevent the garbage blocks from clearing themselves.
+		garbage = [Block([i, 22], 0, fallen = True) if i < 2 or i > 11 else None if i == hole else Block([i, 22], 7, fallen = True) for i in range(14)]
+		for i in range(2, 12):
+			links = [ ]
+			if i != hole:
+				if i != 2 and i != hole + 1:
+					links.append(0)
+				if i != 11 and i != hole - 1:
+					links.append(2)
+				garbage[i].links = links
+				garbage[i].set_color(7)
+
+		self.cells.insert(22, garbage)
 		self.cells.pop(0)
 
 	def flood_fill (self, block_list, index):
@@ -256,7 +267,7 @@ class Grid (PositionedSurface):
 			if 3 in oldlinks: # Down
 				self.link_fill(block_list, [index[0] + 1, index[1]])
 
-	def clear_lines (self, method, dropped, held, next):
+	def clear_lines (self, method, held, next):
 		"""
 			Clears lines when the free tetromino is cut to the grid.
 			method describes the 3 different styles of clearing available:
@@ -321,7 +332,7 @@ class Grid (PositionedSurface):
 						# Tempgrid is the list of all shapes that have not fallen all the way down yet.
 						tempgrid = [ ]
 						# Set the fallen flag of all those blocks to False, which means they're 'floating'.
-						for i in range(base_row - 1, -1, -1):
+						for i in range(21, -1, -1):
 							for j in range(2, 12):
 								if self.cells[i][j] is not None: self.cells[i][j].fallen = False
 						# For each row, cut a set of temporary shapes from it to allow to fall.
@@ -399,12 +410,12 @@ class Grid (PositionedSurface):
 								held.display((475, 80), True)
 							self.update()
 
-							score_text, score_rect = self.font.render(str(int(self.user.score)), (255, 255, 255))
-							score_rect.bottomright = (790, 590)
+							score_text = self.font.render(str(int(self.user.score)), 0, (255, 255, 255))
+							score_rect = score_text.get_rect(bottomright = (790, 590))
 							screen.blit(score_text, score_rect)
 
-							prescore, prescore_rect = self.font.render(str(int(self.user.predict_score(lines_cleared))) + '!', (255, 255, 255))
-							prescore_rect.bottomright = (790, 560)
+							prescore = self.font.render(str(int(self.user.predict_score(lines_cleared))) + '!', 0, (255, 255, 255))
+							prescore_rect = prescore.get_rect(bottomright = (790, 560))
 							screen.blit(prescore, prescore_rect)
 
 							pygame.display.flip()
@@ -414,9 +425,11 @@ class Grid (PositionedSurface):
 					lines_cleared.append(0)
 		if len(lines_cleared) > 1 or lines_cleared[0] > 0:
 			self.user.evaluate_clear_score(lines_cleared)
-			self.user.current_combo *= self.user.combo_factor
-		elif dropped:
+			self.user.combo_ctr += 1
+			self.user.current_combo = self.user.combo_factor ** self.user.combo_ctr
+		else:
 			self.user.current_combo = 1.0
+			self.user.combo_ctr = 0
 
 	def update (self):
 		# Display the grid background and constituent blocks.

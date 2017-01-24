@@ -3,14 +3,13 @@
 try:
 	import os, sys
 	import math, random
-	import pygame, pygame.freetype
+	import pygame, pygame.mixer
 	# import pygame._view; # For some reason, this doesn't fucking work.
 except ImportError, error:
 	print "Something screwey happened:", error
 
 pygame.init()
 pygame.mixer.init(buffer = 1024)
-pygame.freetype.init()
 screen = pygame.display.set_mode((800, 600), pygame.HWSURFACE | pygame.DOUBLEBUF)
 pygame.display.set_caption('pyTetris')
 clock = pygame.time.Clock()
@@ -45,6 +44,7 @@ def get_cos (p1, p2):
 	return (p2[0] - p1[0]) / get_dist(p1, p2); # Adjacent over Hypotenuse
 
 def load_image (name, alpha = None, colorkey = None):
+	# Load an image file into memory. Try not to keep too many of these in memory.
 	try:
 		image = pygame.image.load(os.path.join('textures', name))
 	except pygame.error, err:
@@ -108,11 +108,13 @@ class PositionedSurface (object):
 
 	def move_rt (self, speed, angle):
 		# Convert to rectangular coordinates and add the offset.
-		self.set(topleft = (self.rect.left + speed * cos(angle), self.rect.top + speed * sin(angle)))
+		self.pos = self.pos[0] + speed * cos(angle), self.pos[1] + speed * sin(angle)
+		self.set(center = pos)
 
 	def move_xy (self, x, y):
 		# Add the offset.
-		self.set(topleft = (self.rect.left + x, self.rect.top + y))
+		self.pos = self.pos[0] + x, self.pos[1] + y
+		self.set(center = pos)
 
 	def move_to (self, dest, speed):
 		# Moves pos attribute towards a target point at a certain speed.
@@ -143,7 +145,8 @@ class MenuSelection (AnimatedSprite):
 		# Position is the coordinates of the topleft corner of the selection's rectangle.
 		self.action = action
 		self.menu = menu
-		self.text, self.text_rect = self.menu.font.render(text, (255, 255, 255))
+		self.text = self.menu.font.render(text, 0, pygame.Color(255, 255, 255))
+		self.text_rect = self.text.get_rect()
 
 		if unsel_bg is None:
 			unsel_bg = pygame.Surface(size)
@@ -186,7 +189,7 @@ class Menu (AnimatedSprite):
 		super(Menu, self).__init__(bg, rect)
 
 		self.user = user
-		self.font = pygame.freetype.Font(None, 12)
+		self.font = pygame.font.SysFont(None, 25)
 		# Coordinates of currently selected selection.
 		self.selection = [0, 0]
 		# All menus will have their own selections set, effectively a 2d array, with the range length set at every instance.
