@@ -49,3 +49,9 @@ InDev 0.2.4:
 - Fixed bug where I piece still caused crashes when wall-kicked from the right side due to block iteration order by padding the right side by one more.
 - Optimized code per frame, now Grid.clear_lines() isn't run every frame, and the game doesn't wait for the frame counter to roll over when a piece is dropped. 
 - Fixed scoring system bugs.
+
+InDev 0.2.5:
+- Implemented proper handling of losing.
+- Rebalanced the score values to more closely match standards.
+- Implemented Delayed Auto-Shifting.
+- Streamlined the running code, making it more readable and more efficient.
