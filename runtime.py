@@ -109,12 +109,12 @@ class PositionedSurface (object):
 	def move_rt (self, speed, angle):
 		# Convert to rectangular coordinates and add the offset.
 		self.pos = self.pos[0] + speed * cos(angle), self.pos[1] + speed * sin(angle)
-		self.set(center = pos)
+		self.set(center = self.pos)
 
 	def move_xy (self, x, y):
 		# Add the offset.
 		self.pos = self.pos[0] + x, self.pos[1] + y
-		self.set(center = pos)
+		self.set(center = self.pos)
 
 	def move_to (self, dest, speed):
 		# Moves pos attribute towards a target point at a certain speed.
@@ -201,8 +201,8 @@ class Menu (AnimatedSprite):
 		self.left = False
 		self.right = False
 		self.moved = False
-		self.basetime = 15
-		self.shortime = 3
+		self.basetime = 25
+		self.shortime = 6
 		self.movetime = self.basetime
 
 		self.selections[self.selection[0]][self.selection[1]].set_select(False)
@@ -297,7 +297,7 @@ class Menu (AnimatedSprite):
 				self.selection[i] = 0
 			elif self.selection[i] < 0:
 				self.selection[i] = self.range[i] - 1
-		#print self.selection
+		# print self.selection
 		self.selections[self.selection[0]][self.selection[1]].set_select(True)
 		for items in self.selections:
 			for item in items:

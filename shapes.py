@@ -278,6 +278,7 @@ class Grid (PositionedSurface):
 			In both sticky and cascade clearing, the groups will fall as if they were free tetrominos, then 
 			the lines will be re-evaluated to see if another clear happened.
 		"""
+		# Track how many lines are cleared per chain.
 		lines_cleared = [0]
 
 		# Initialize the cleared flag to enter the while loop.
@@ -405,21 +406,21 @@ class Grid (PositionedSurface):
 							pygame.event.pump()
 							screen.blit(game_bg, (0, 0))
 							for i in range(3):
-								next[i].display((-25, 80 + (i * 80)), True)
+								next[i].display((475, 80 + (i * 80)), True)
 							if held is not None:
-								held.display((475, 80), True)
+								held.display((-25, 80), True)
 							self.update()
 
 							score_text = self.font.render(str(int(self.user.score)), 0, (255, 255, 255))
 							score_rect = score_text.get_rect(bottomright = (790, 590))
 							screen.blit(score_text, score_rect)
 
-							prescore = self.font.render(str(int(self.user.predict_score(lines_cleared))) + '!', 0, (255, 255, 255))
+							prescore = self.font.render(str(int(self.user.predict_score(lines_cleared))) + '!' * len(lines_cleared), 0, (255, 255, 255))
 							prescore_rect = prescore.get_rect(bottomright = (790, 560))
 							screen.blit(prescore, prescore_rect)
 
 							pygame.display.flip()
-							pygame.time.wait(100)
+							pygame.time.wait(40)
 
 						# If the tempgrid list is empty, that means that all the blocks have fallen. Check if the fallen blocks caused another line clear.
 					lines_cleared.append(0)

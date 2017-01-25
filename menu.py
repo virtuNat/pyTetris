@@ -144,6 +144,8 @@ class PauseMenu (Menu):
 					self.reset()
 				elif self.selections[self.selection[0]][self.selection[1]].action == 'quit':
 					self.user.state = 'main_menu'
+					self.user.score = 0
+					self.user.last_score = 0
 					self.game.set_data()
 					self.reset()
 			elif event.key == pygame.K_x or event.key == pygame.K_ESCAPE:
@@ -153,4 +155,60 @@ class PauseMenu (Menu):
 		screen.blit(self.pause_bg, (0, 0))
 		self.blit_to(screen)
 		super(PauseMenu, self).run()
+		pygame.display.flip()
+
+class LossMenu (Menu):
+	"""
+		When you lose the game, this menu pops up to show your score and let you try for a higher one.
+	"""
+	def __init__ (self, user):
+		self.loss_bg = pygame.Surface(screen.get_size())
+		bg = pygame.Surface((250, 300))
+		bg.fill((127, 0, 0))
+		super(LossMenu, self).__init__(user, bg)
+		self.set(center = screen.get_rect().center)
+
+		tmargin = 20
+		hmargin = 15
+		spacing = 5
+		height = 60
+
+		self.selections = [[MenuSelection(self, 'restart', 'Restart Game', (self.rect.left + hmargin, self.rect.top + tmargin + spacing + height), (self.rect.width - 2 * hmargin, height)),
+							MenuSelection(self, 'options', 'Options', (self.rect.left + hmargin, self.rect.top + tmargin + 2 * (spacing + height)), (self.rect.width - 2 * hmargin, height)),
+							MenuSelection(self, 'quit', 'Return to Menu', (self.rect.left + hmargin, self.rect.top + tmargin + 3 * (spacing + height)), (self.rect.width - 2 * hmargin, height))]]
+		self.set_range()
+
+	def set_bg (self, bg):
+		self.loss_bg.blit(bg, (0, 0))
+
+	def render_loss (self):
+		self.loss_text1 = self.font.render("You Lose!", 0, pygame.Color(255, 255, 255))
+		self.loss_rect1 = self.loss_text1.get_rect(midtop = (self.rect.centerx, self.rect.top + 10))
+
+		self.loss_text2 = self.font.render("Score: " + str(self.user.score), 0, pygame.Color(255, 255, 255))
+		self.loss_rect2 = self.loss_text2.get_rect(midtop = (self.rect.centerx, self.loss_rect1.bottom + 10))
+
+	def eval_input (self):
+		event = super(LossMenu, self).eval_input()
+		if event.type == pygame.KEYDOWN:
+			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
+				if self.selections[self.selection[0]][self.selection[1]].action == 'restart':
+					self.user.state = 'in_game'
+					self.user.score = 0
+					self.user.last_score = 0
+					self.game.set_data()
+					self.reset()
+				elif self.selections[self.selection[0]][self.selection[1]].action == 'quit':
+					self.user.state = 'main_menu'
+					self.user.score = 0
+					self.user.last_score = 0
+					self.game.set_data()
+					self.reset()
+
+	def run (self):
+		screen.blit(self.loss_bg, (0, 0))
+		self.blit_to(screen)
+		screen.blit(self.loss_text1, self.loss_rect1)
+		screen.blit(self.loss_text2, self.loss_rect2)
+		super(LossMenu, self).run()
 		pygame.display.flip()
