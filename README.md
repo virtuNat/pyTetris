@@ -80,3 +80,7 @@ InDev 0.2.5:
 - Rebalanced the score values to more closely match standards.
 - Implemented Delayed Auto-Shifting.
 - Streamlined the running code, making it more readable and more efficient, undoing 0.0.6's separation.
+
+InDev 0.2.6:
+- Implemented tetrimino spawn delay.
+- Allowed DAS to charge during spawn delay.
