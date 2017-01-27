@@ -1,3 +1,4 @@
+# Code for the tetris blocks, imported by the engine.
 try:
 	from runtime import *
 except ImportError, error:
@@ -203,7 +204,7 @@ class Grid (PositionedSurface):
 		The Matrix upon which the game is played. When shapes fall and can no longer be moved, 
 		their blocks are stored here. Fallen block colors and links are kept.
 
-		The Grid object extends beyond the visible playing field 2 blocks in every direction, 
+		The Grid object extends beyond the visible playing field 2 blocks in every direction (3 blocks right), 
 		with empty space on the top to spawn new shapes in and invisible blocks on the walls and floor.
 
 		Said invisible blocks mean that the only required checks per frame are collision detection checks.
@@ -222,8 +223,8 @@ class Grid (PositionedSurface):
 	def add_garbage (self):
 		# Adds a garbage row.
 		hole = random.randint(2, 11)
-		# Prevent the garbage blocks from clearing themselves.
 		garbage = [Block([i, 22], 0, fallen = True) if i < 2 or i > 11 else None if i == hole else Block([i, 22], 7, fallen = True) for i in range(14)]
+		# Prevent the garbage blocks from clearing themselves.
 		for i in range(2, 12):
 			links = [ ]
 			if i != hole:
@@ -238,7 +239,7 @@ class Grid (PositionedSurface):
 		self.cells.pop(0)
 
 	def flood_fill (self, block_list, index):
-		# Recursive flood fill function.
+		# Recursive blind flood fill function.
 		if self.cells[index[0]][index[1]] is not None and index[0] < 22 and index[1] > 1 and index[1] < 12:
 			# Cut block from grid to temporary shape.
 			block_list.append(Block([index[1] - 6, index[0] - 1], self.cells[index[0]][index[1]].color, self.cells[index[0]][index[1]].links))

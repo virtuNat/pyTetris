@@ -1,5 +1,4 @@
 # Stores individual menu data.
-
 try:
 	from runtime import *
 except ImportError, error:

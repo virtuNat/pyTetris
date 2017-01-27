@@ -2,6 +2,7 @@
 
 try:
 	from engine import *
+	print dir()
 except ImportError, error:
 	print "There has been a mistake: ", error
 
@@ -29,7 +30,7 @@ def main ():
 		elif user.state == 'in_game':
 			game.run()
 	pygame.quit()
-	sys.exit(2)
+	sys.exit(1)
 		
 if __name__ == '__main__':
 	main()
