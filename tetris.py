@@ -2,7 +2,6 @@
 
 try:
 	from engine import *
-	print dir()
 except ImportError, error:
 	print "There has been a mistake: ", error
 

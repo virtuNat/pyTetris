@@ -35,10 +35,11 @@ class Block (AnimatedSprite):
 		# Determines block graphic based on its links. Refer to block.png in the textures folder.
 		# Links can be wrong due to bugs, which are usually safe unless non-naive line clears are used.
 		color = (color * 50) + (25 * int(ghost))
-		form = 0
 		linknum = len(self.links)
-		if linknum == 1:
-			form += self.links[0] + 1
+		if linknum == 0:
+			form = 0
+		elif linknum == 1:
+			form = self.links[0] + 1
 		elif linknum == 2:
 			if 0 in self.links:
 				if 1 in self.links:
@@ -65,10 +66,12 @@ class Block (AnimatedSprite):
 					form = 13
 			else:
 				form = 12
+		else: # Isn't used, normally.
+			form = 15
 		self.image = block_source.subsurface(pygame.Rect(color, form * 25, 25, 25))
 
 	def copy (self, block = None, ghost = False):
-		# Copy block state onto another. If block to be copied to is empty, create new Block object.
+		# Copy block state onto another block. If block to be copied to is empty, create new Block object.
 		if block is None:
 			newblock = Block(self.relpos, self.color, self.links, ghost)
 			return newblock
@@ -90,9 +93,9 @@ class Shape (object):
 	"""
 
 	def __init__(self, form = 0):
-		self.pos = [6, 1]
-		self.form = form
-		self.state = 0
+		self.pos = [6, 1] # Center of rotation.
+		self.form = form # Tetrimino shape.
+		self.state = 0 # Current rotation relative to spawn rotation.
 
 		if form == 0: # I
 			self.blocks = [Block([-1, 0], form, [2]), Block([0, 0], form, [0, 2]), Block([1, 0], form, [0, 2]), Block([2, 0], form, [0])]

@@ -25,7 +25,7 @@ def cos (angle):
 def hyp_area (p1, p2):
 	# The area of a square whose side is the length of the line segment bounded by p1 and p2.
 	# Used for comparing distances without dealing with a square root operation.
-	return ((p1[0] - p2[0]) ** 2, (p1[1] - p2[1]) ** 2); # c^2 = a^2 + b^2
+	return ((p1[0] - p2[0]) ** 2, (p1[1] - p2[1]) ** 2) # c^2 = a^2 + b^2
 
 def get_ang (p1, p2):
 	# Angle from p1 to p2.
@@ -33,22 +33,22 @@ def get_ang (p1, p2):
 
 def get_dist (p1, p2):
 	# The absolute shortest distance between p1 and p2.
-	return math.sqrt(hyp_area(p1, p2)); # c = sqrt(c^2)
+	return math.sqrt(hyp_area(p1, p2)) # c = sqrt(c^2)
 
 def get_sin (p1, p2):
 	# Sine of angle from p1 to p2 by definition in a Cartesian plane.
-	return (p2[1] - p1[1]) / get_dist(p1, p2); # Opposite over Hypotenuse
+	return (p2[1] - p1[1]) / get_dist(p1, p2) # Opposite over Hypotenuse
 
 def get_cos (p1, p2):
 	# Cosine of angle from p1 to p2 by definition in a Cartesian plane.
-	return (p2[0] - p1[0]) / get_dist(p1, p2); # Adjacent over Hypotenuse
+	return (p2[0] - p1[0]) / get_dist(p1, p2) # Adjacent over Hypotenuse
 
 def load_image (name, alpha = None, colorkey = None):
 	# Load an image file into memory. Try not to keep too many of these in memory.
 	try:
 		image = pygame.image.load(os.path.join('textures', name))
 	except pygame.error, err:
-		print "Image could not be loaded:"
+		print "Image could not be loaded: "
 		raise err
 	if alpha is None:
 		image.convert()
