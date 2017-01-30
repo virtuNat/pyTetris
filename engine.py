@@ -43,6 +43,7 @@ class User (object):
 		self.last_score = 0 # Score value for the last clear.
 
 		self.lines_cleared = 0 # Total number of lines cleared in the game.
+		self.level = 0 # Current level in arcade mode.
 		self.timer = 0 # How long the game has been playing.
 
 	def add_score (self, value):
@@ -80,6 +81,22 @@ class User (object):
 		self.add_score(temp_score)
 		self.last_score = temp_score
 
+	def eval_level (self):
+		# Evaluate current arcade level.
+		if self.lines_cleared <= 500: # Up to level 51, increment every 10 lines.
+			self.level = self.lines_cleared // 10
+		elif self.lines_cleared <= 1500: # Up to level 101, increment every 20 lines.
+			self.level = 50 + ((self.lines_cleared - 500) // 20)
+		elif self.lines_cleared <= 2850: # Up to level 146, increment every 30 lines.
+			self.level = 100 + ((self.lines_cleared - 1500) // 30)
+		elif self.lines_cleared <= 4450: # Up to level 186, increment every 40 lines.
+			self.level = 145 + ((self.lines_cleared - 2850) // 40)
+		elif self.lines_cleared <= 6450: # Up to level 226, increment every 50 lines.
+			self.level = 185 + ((self.lines_cleared - 4450) // 50)
+		elif self.lines_cleared <= 8250: # Up to level 256, increment every 60 lines.
+			self.level = 225 + ((self.lines_cleared - 6450) // 60)
+		else: self.level = 255
+
 class Tetris (object):
 	""" 
 		The actual game in itself.
@@ -91,7 +108,7 @@ class Tetris (object):
 		Grab the highest score!
 	"""
 
-	def __init__(self, user, pause_menu, loss_menu):
+	def __init__ (self, user, pause_menu, loss_menu):
 		self.user = user
 		self.pause_menu = pause_menu
 		self.loss_menu = loss_menu
@@ -100,6 +117,7 @@ class Tetris (object):
 		self.font = pygame.font.SysFont(None, 25)
 
 		self.grid = Grid(user)
+		self.grid.game = self
 		self.set_data()
 
 		print "LEFT and RIGHT arrow keys to shift tetrimino left and right."
@@ -132,8 +150,9 @@ class Tetris (object):
 
 			self.shift_delay = 25
 			self.shift_fdelay = 4
+			self.line_delay = 300 # Number of frames between garbage line additions at max level.
+			self.line_frame = self.line_delay # Frame counter for the above.
 
-			self.level = 0 # Current level in arcade mode.
 		elif self.user.gametype == 'time': # Timed mode is faster to induce stress.
 			self.fall_delay = 10
 			self.soft_delay = 1
@@ -150,8 +169,6 @@ class Tetris (object):
 
 			self.shift_delay = 20 # The frame delay between holding the button and auto-shifting.
 			self.shift_fdelay = 2 # The frame delay between shifts when auto-shifting.
-
-			self.user.timer = 0 
 
 		self.entry_frame = 0 # Frame counter for the above delay.
 		self.entry_flag = True # True if a piece is currently in play, false if the player is waiting for a new one.
@@ -254,9 +271,11 @@ class Tetris (object):
 				elif event.key == pygame.K_SPACE: # Hard drop
 					self.user.hard_flag = True
 					self.ghostshape.copy_to(self.freeshape)
-					self.eval_fallen(self.ghostshape.pos[1] - self.newshape.pos[1])
+					self.eval_fallen(self.ghostshape.pos[1] - self.freeshape.pos[1])
 
 			if self.user.debug:
+				if self.user.gametype == 'arcade' and event.key == pygame.K_8:
+					self.user.lines_cleared += 50
 				if event.key == pygame.K_9: # Add garbage line
 					self.grid.add_garbage()
 					self.grid.update()
@@ -285,7 +304,7 @@ class Tetris (object):
 				self.shift_dir = '0'
 
 	def eval_shift (self):
-		# Evaluate Delayed auto-shifting.
+		# Evaluate Delayed Auto-Shifting.
 		if self.shift_frame > 0:
 			self.shift_frame -= 1
 		elif (self.shift_dir == 'l' or self.shift_dir == 'r') and self.entry_flag:
@@ -533,11 +552,12 @@ class Tetris (object):
 
 	def eval_gravity (self):
 		self.newshape.translate((0, 1))
-		gravflag = False
 		for block in self.newshape.blocks:
 			# If collision occurs due to the gravity timer running out:
 			if self.collision_test(block, self.newshape):
 				gravflag = True
+				break
+		else: gravflag = False
 		self.newshape.translate((0, -1))
 		return gravflag
 
@@ -551,7 +571,7 @@ class Tetris (object):
 		self.user.eval_drop_score(posdif)
 		self.shape_to_grid()
 		# Clear lines if a piece dropped, and add the number of lines cleared to the total.
-		self.user.lines_cleared += sum(self.grid.clear_lines(self.user.cleartype, self.storedshape, self.nextshapes))
+		self.user.lines_cleared += sum(self.grid.clear_lines(self.user.cleartype))
 		self.grid.update()
 		# Reset flags pertaining to dropped state of the tetrimino.
 		self.user.twist_flag = False
@@ -621,9 +641,197 @@ class Tetris (object):
 		else:
 			self.user.state = 'loser'
 
+	def ramp_arcade (self, oldlevel):
+		# Responsible for making the Arcade mode more difficult.
+		if oldlevel < self.user.level:
+			# Add garbage on a level up.
+			for i in range((self.user.level + 1) // 25): self.grid.add_garbage()
+			# Increase game speed based on level.
+			if self.user.level < 2:
+				self.fall_delay = 45
+				self.soft_delay = 6
+				self.entry_delay = 30
+
+				self.shift_delay = 25
+				self.shift_fdelay = 4
+
+			elif self.user.level < 5:
+				self.fall_delay = 40
+				self.soft_delay = 5
+				self.entry_delay = 30
+
+				self.shift_delay = 25
+				self.shift_fdelay = 4
+
+			elif self.user.level < 10:
+				self.fall_delay = 35
+				self.soft_delay = 4
+				self.entry_delay = 25
+
+				self.shift_delay = 22
+				self.shift_fdelay = 3
+
+			elif self.user.level < 15:
+				self.fall_delay = 30
+				self.soft_delay = 3
+				self.entry_delay = 20
+
+				self.shift_delay = 18
+				self.shift_fdelay = 3
+
+			elif self.user.level < 20:
+				self.fall_delay = 28
+				self.soft_delay = 3
+				self.entry_delay = 18
+
+				self.shift_delay = 16
+				self.shift_fdelay = 3
+
+			elif self.user.level < 25:
+				self.fall_delay = 28
+				self.soft_delay = 3
+				self.entry_delay = 18
+
+				self.shift_delay = 16
+				self.shift_fdelay = 3
+
+			elif self.user.level < 30:
+				self.fall_delay = 26
+				self.soft_delay = 3
+				self.entry_delay = 16
+
+				self.shift_delay = 14
+				self.shift_fdelay = 3
+
+			elif self.user.level < 35:
+				self.fall_delay = 24
+				self.soft_delay = 3
+				self.entry_delay = 14
+
+				self.shift_delay = 12
+				self.shift_fdelay = 3
+
+			elif self.user.level < 40:
+				self.fall_delay = 22
+				self.soft_delay = 3
+				self.entry_delay = 12
+
+				self.shift_delay = 10
+				self.shift_fdelay = 2
+
+			elif self.user.level < 45:
+				self.fall_delay = 20
+				self.soft_delay = 2
+				self.entry_delay = 10
+
+				self.shift_delay = 8
+				self.shift_fdelay = 2
+
+			elif self.user.level < 50:
+				self.fall_delay = 18
+				self.soft_delay = 2
+				self.entry_delay = 10
+
+				self.shift_delay = 8
+				self.shift_fdelay = 2
+
+			elif self.user.level < 55:
+				self.fall_delay = 16
+				self.soft_delay = 2
+				self.entry_delay = 10
+
+				self.shift_delay = 8
+				self.shift_fdelay = 1
+
+			elif self.user.level < 60:
+				self.fall_delay = 14
+				self.soft_delay = 2
+				self.entry_delay = 10
+
+				self.shift_delay = 8
+				self.shift_fdelay = 1
+
+			elif self.user.level < 65:
+				self.fall_delay = 13
+				self.soft_delay = 1
+				self.entry_delay = 10
+
+				self.shift_delay = 8
+				self.shift_fdelay = 1
+
+			elif self.user.level < 70:
+				self.fall_delay = 12
+				self.soft_delay = 1
+				self.entry_delay = 8
+
+				self.shift_delay = 8
+				self.shift_fdelay = 1
+
+			elif self.user.level < 75:
+				self.fall_delay = 11
+				self.soft_delay = 1
+				self.entry_delay = 8
+
+				self.shift_delay = 8
+				self.shift_fdelay = 1
+
+			elif self.user.level < 80:
+				self.fall_delay = 10
+				self.soft_delay = 1
+				self.entry_delay = 6
+
+				self.shift_delay = 6
+				self.shift_fdelay = 1
+
+			elif self.user.level < 100:
+				self.fall_delay = 9
+				self.soft_delay = 1
+				self.entry_delay = 6
+
+				self.shift_delay = 5
+				self.shift_fdelay = 1
+
+			else:
+				self.fall_delay = 8
+				self.soft_delay = 0
+				self.entry_delay = 5
+
+				self.shift_delay = 4
+				self.shift_fdelay = 1
+		# At max level, periodically spawn garbage lines.
+		if self.user.level == 255:
+			if self.line_frame == 0:
+				self.grid.add_garbage()
+				self.line_frame = self.line_delay
+			else:
+				self.line_frame -= 1
+
 	def render_text (self, text, color, **pos):
+		# Render a message to the screen.
 		tsurf = self.font.render(text, 0, color)
 		screen.blit(tsurf, tsurf.get_rect(**pos))
+
+	def display (self, clearing = False):
+		# Display relevant stuff.
+
+		if self.user.gametype == 'arcade':
+			self.render_text('Level: ' + str(self.user.level + 1), (255, 255, 255), bottomleft = (10, 560))
+		elif self.user.gametype == 'time':
+			self.render_text('Time Remaining: {}:{:02d}:{:02d}'.format(self.user.timer // 60000, self.user.timer // 1000 % 60, self.user.timer % 1000 // 10), (255, 255, 255), bottomleft = (10, 560))
+
+		# Display total tiles cleared.
+		self.render_text('Lines Cleared: ' + str(self.user.lines_cleared), (255, 255, 255), bottomleft = (10, 590))
+		# Display current score.
+		self.render_text('Score: ' + str(self.user.score), (255, 255, 255), bottomright = (790, 560))
+		# Display score from last clear.
+		self.render_text('Last Clear: ' + str(self.user.last_score), (255, 255, 255), bottomright = (790, 590))
+		# Display relevant shapes.
+		if self.entry_flag and not clearing:
+			self.freeshape.display()
+		for i in range(3):
+			self.nextshapes[i].display((475, 80 + (i * 80)), True)
+		if self.storedshape is not None:
+			self.storedshape.display((-25, 80), True)
 
 	def run (self):
 		# Runs the game.
@@ -655,8 +863,8 @@ class Tetris (object):
 			else: # If there won't be gravity collision:
 				if self.grav_frame < self.grav_delay: self.grav_frame += 1
 				else: # Move shape down.
-					self.grav_frame = 0
-					self.newshape.translate((0, 1))				
+					self.grav_frame = 0	
+					self.newshape.translate((0, 1))
 		elif self.entry_frame > 0:
 			self.entry_frame -= 1
 		else:
@@ -664,12 +872,13 @@ class Tetris (object):
 			self.next_shape()
 
 		if self.user.gametype == 'arcade':
-			# Display current arcade mode level.
-			self.render_text(str(self.level + 1), (255, 255, 255), bottomright = (790, 530))
+			# Evaluate current arcade level.
+			oldlevel = self.user.level
+			self.user.eval_level()
+			self.ramp_arcade(oldlevel)
 			self.user.timer += clock.get_time()
 		elif self.user.gametype == 'time':
-			# Display and evaluate the timer in timed mode.
-			self.render_text('{}:{:02d}:{:02d}'.format(self.user.timer // 60000, self.user.timer // 1000 % 60, self.user.timer % 1000 // 10), (255, 255, 255), bottomright = (790, 530))
+			# Evaluate the timer in timed mode.
 			if self.user.timer > 0:
 				self.user.timer -= clock.get_time()
 			else:
@@ -678,28 +887,18 @@ class Tetris (object):
 		else:
 			# Increment timer for non-timed modes so it could be added to the high score.
 			self.user.timer += clock.get_time()
-
-		# Display total tiles cleared.
-		self.render_text(str(self.user.lines_cleared), (255, 255, 255), bottomleft = (10, 590))
-		# Display current score.
-		self.render_text(str(self.user.score), (255, 255, 255), bottomright = (790, 590))
-		# Display score from last clear.
-		self.render_text(str(self.user.last_score) + '!' * self.user.combo_ctr, (255, 255, 255), bottomright = (790, 560))
-		# Display relevant shapes.
-		if self.entry_flag:
-			self.freeshape.display()
-		for i in range(3):
-			self.nextshapes[i].display((475, 80 + (i * 80)), True)
-		if self.storedshape is not None:
-			self.storedshape.display((-25, 80), True)
+		# Display heads-up information.
+		self.display()
 
 		if self.user.state == 'loser':
 			self.loss_menu.render_loss()
 			self.loss_menu.set_bg(screen)
 		# Pause game after evaluating frame.
 		if self.paused:
+			self.soft_drop = False
+			self.shift_dir = '0'
 			self.paused = False
 			self.pause_menu.set_bg(screen)
 			self.user.state = 'paused'
-
+		# Refresh screen.
 		pygame.display.flip()

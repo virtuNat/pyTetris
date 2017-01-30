@@ -4,7 +4,7 @@ try:
 except ImportError, error:
 	print "Runtime has fucking failed:", error
 
-block_source = load_image('block.png', colorkey = (0, 0, 0))
+block_source = load_image('block.png')
 grid_source = load_image('grid.png', colorkey = (0, 0, 0))
 game_bg = pygame.Surface(screen.get_size())
 game_bg.fill((0, 0, 0))
@@ -69,6 +69,7 @@ class Block (AnimatedSprite):
 		else: # Isn't used, normally.
 			form = 15
 		self.image = block_source.subsurface(pygame.Rect(color, form * 25, 25, 25))
+		if self.ghost: self.image.set_alpha(191)
 
 	def copy (self, block = None, ghost = False):
 		# Copy block state onto another block. If block to be copied to is empty, create new Block object.
@@ -216,12 +217,7 @@ class Grid (PositionedSurface):
 	def __init__(self, user):
 		super(Grid, self).__init__(grid_source, center = screen.get_rect().center)
 		self.user = user
-		self.font = pygame.font.SysFont(None, 25)
 		self.set_cells()
-
-	def render_text (self, text, color, **pos):
-		tsurf = self.font.render(text, 0, color)
-		screen.blit(tsurf, tsurf.get_rect(**pos))
 
 	def set_cells (self):
 		# Sets the Matrix to have nothing but its invisible blocks.
@@ -230,7 +226,7 @@ class Grid (PositionedSurface):
 	def add_garbage (self):
 		# Adds a garbage row.
 		hole = random.randint(2, 11)
-		garbage = [Block([i, 22], 0, fallen = True) if i < 2 or i > 11 else None if i == hole else Block([i, 22], 7, fallen = True) for i in range(14)]
+		garbage = [Block([i, 22], 0, fallen = True) if i < 2 or i > 11 else None if i == hole else Block([i, 22], 7, fallen = True) for i in range(15)]
 		# Prevent the garbage blocks from clearing themselves.
 		for i in range(2, 12):
 			links = [ ]
@@ -244,6 +240,7 @@ class Grid (PositionedSurface):
 
 		self.cells.insert(22, garbage)
 		self.cells.pop(0)
+		self.update()
 
 	def flood_fill (self, block_list, index):
 		# Recursive blind flood fill function.
@@ -275,7 +272,7 @@ class Grid (PositionedSurface):
 			if 3 in oldlinks: # Down
 				self.link_fill(block_list, [index[0] + 1, index[1]])
 
-	def clear_lines (self, method, held, next):
+	def clear_lines (self, method):
 		"""
 			Clears lines when the free tetromino is cut to the grid.
 			method describes the 3 different styles of clearing available:
@@ -306,7 +303,15 @@ class Grid (PositionedSurface):
 						break
 				# Once a row is detected to be full, clear it.
 				if full_row:
+					# Increment the cleared lines counter.
 					lines_cleared[-1] += 1
+					# If a garbage row is being cleared, the method is always naive for that row only.
+					for j in range(2, 4):
+						if self.cells[i][j].color == 7:
+							garbage = True
+							break
+					else: garbage = False
+
 					# If a line is full below the indicated base_row, set base_row to that row.
 					if i > base_row: base_row = i
 					# Don't check for cleared lines and continue the loop if method is naive.
@@ -325,12 +330,12 @@ class Grid (PositionedSurface):
 						# Just leave the row empty if the method is sticky or cascade.
 						if method > 0:
 							self.cells[i][j] = None
-					# Splice the old row out and create a new blank row on top if method is naive.
-					if method < 1:
+					# Splice the old row out and create a new blank row on top if method is naive or when clearing a garbage row.
+					if method < 1 or garbage:
 						# Delete the old row.
 						self.cells.pop(i)
 						# Create new blank row at the top.
-						self.cells.insert(0, [Block([i, 0], 0, fallen = True) if i < 2 or i > 11 else None for i in range(14)])
+						self.cells.insert(0, [Block([i, 0], 0, fallen = True) if i < 2 or i > 11 else None for i in range(15)])
 
 			# If the method is naive, then don't continue.
 			if method > 0:
@@ -343,7 +348,7 @@ class Grid (PositionedSurface):
 						# Set the fallen flag of all those blocks to False, which means they're 'floating'.
 						for i in range(21, -1, -1):
 							for j in range(2, 12):
-								if self.cells[i][j] is not None: self.cells[i][j].fallen = False
+								if self.cells[i][j] is not None and self.cells[i][j].color != 7: self.cells[i][j].fallen = False
 						# For each row, cut a set of temporary shapes from it to allow to fall.
 						locked_shapes = True
 						while locked_shapes:
@@ -413,19 +418,8 @@ class Grid (PositionedSurface):
 							# Display intermediate drops so the user can see the combo.
 							pygame.event.pump()
 							screen.blit(game_bg, (0, 0))
-							for i in range(3):
-								next[i].display((475, 80 + (i * 80)), True)
-							if held is not None:
-								held.display((-25, 80), True)
 							self.update()
-
-							# Display total tiles cleared.
-							self.render_text(str(self.user.lines_cleared), (255, 255, 255), bottomleft = (10, 590))
-							# Display current score.
-							self.render_text(str(self.user.score), (255, 255, 255), bottomright = (790, 590))
-							# Display score from last clear.
-							self.render_text(str(self.user.predict_score(lines_cleared, False)) + '!' * len(lines_cleared), (255, 255, 255), bottomright = (790, 560))
-
+							self.game.display(True)
 							pygame.display.flip()
 							pygame.time.wait(40)
 

@@ -51,11 +51,11 @@ def load_image (name, alpha = None, colorkey = None):
 		print "Image could not be loaded: "
 		raise err
 	if alpha is None:
-		image.convert()
+		image = image.convert()
 		if colorkey is not None:
 			image.set_colorkey(colorkey)
 	else:
-		image.convert_alpha()
+		image = image.convert_alpha()
 	return image
 
 class PositionedSurface (object):
@@ -218,9 +218,11 @@ class Menu (AnimatedSprite):
 		self.get_selected(*self.selection).set_select(True)
 
 	def get_selected(self, i, j):
+		# Easy way of getting the current selection.
 		return self.selections[i][j]
 
 	def render_text (self, text, color, **pos):
+		# Render a message to the screen.
 		tsurf = self.font.render(text, 0, color)
 		screen.blit(tsurf, tsurf.get_rect(**pos))
 
