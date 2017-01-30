@@ -219,6 +219,10 @@ class Grid (PositionedSurface):
 		self.font = pygame.font.SysFont(None, 25)
 		self.set_cells()
 
+	def render_text (self, text, color, **pos):
+		tsurf = self.font.render(text, 0, color)
+		screen.blit(tsurf, tsurf.get_rect(**pos))
+
 	def set_cells (self):
 		# Sets the Matrix to have nothing but its invisible blocks.
 		self.cells = [[Block([i, j], 0, fallen = True) if i < 2 or i > 11 or j > 21 else None for i in range(15)] for j in range(24)]
@@ -415,13 +419,12 @@ class Grid (PositionedSurface):
 								held.display((-25, 80), True)
 							self.update()
 
-							score_text = self.font.render(str(int(self.user.score)), 0, (255, 255, 255))
-							score_rect = score_text.get_rect(bottomright = (790, 590))
-							screen.blit(score_text, score_rect)
-
-							prescore = self.font.render(str(int(self.user.predict_score(lines_cleared))) + '!' * len(lines_cleared), 0, (255, 255, 255))
-							prescore_rect = prescore.get_rect(bottomright = (790, 560))
-							screen.blit(prescore, prescore_rect)
+							# Display total tiles cleared.
+							self.render_text(str(self.user.lines_cleared), (255, 255, 255), bottomleft = (10, 590))
+							# Display current score.
+							self.render_text(str(self.user.score), (255, 255, 255), bottomright = (790, 590))
+							# Display score from last clear.
+							self.render_text(str(self.user.predict_score(lines_cleared, False)) + '!' * len(lines_cleared), (255, 255, 255), bottomright = (790, 560))
 
 							pygame.display.flip()
 							pygame.time.wait(40)
@@ -429,10 +432,17 @@ class Grid (PositionedSurface):
 						# If the tempgrid list is empty, that means that all the blocks have fallen. Check if the fallen blocks caused another line clear.
 					lines_cleared.append(0)
 		if len(lines_cleared) > 1 or lines_cleared[0] > 0:
-			self.user.evaluate_clear_score(lines_cleared)
+			# Determine if the board was cleared.
+			for i in range(2, 12):
+				if self.cells[21][i] is not None:
+					clearflag = False
+					break
+			else: clearflag = True
+			# Evaluate combo.
+			self.user.eval_clear_score(lines_cleared, clearflag)
 			self.user.combo_ctr += 1
 			self.user.current_combo = self.user.combo_factor ** self.user.combo_ctr
-		else:
+		else: # If no lines were cleared, break combo.
 			self.user.current_combo = 1.0
 			self.user.combo_ctr = 0
 		return lines_cleared

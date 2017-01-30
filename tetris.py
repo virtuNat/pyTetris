@@ -29,6 +29,7 @@ def main ():
 			pause_menu.run()
 		elif user.state == 'in_game':
 			game.run()
+
 	pygame.quit()
 	sys.exit(1)
 		

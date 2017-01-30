@@ -220,6 +220,10 @@ class Menu (AnimatedSprite):
 	def get_selected(self, i, j):
 		return self.selections[i][j]
 
+	def render_text (self, text, color, **pos):
+		tsurf = self.font.render(text, 0, color)
+		screen.blit(tsurf, tsurf.get_rect(**pos))
+
 	def eval_input (self):
 		# Evaluate user input. Handling of specific options is menu-specific.
 		event = pygame.event.poll()
