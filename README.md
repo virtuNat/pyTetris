@@ -84,3 +84,15 @@ InDev 0.2.5:
 InDev 0.2.6:
 - Implemented tetrimino spawn delay.
 - Allowed DAS to charge during spawn delay.
+
+InDev 0.2.7:
+- Allowed swapping held piece during spawn delay.
+- Fixed bug where piece did not evaluate properly after spawn delay.
+- Soft locking time increased to normal locking time.
+- Rebalanced tetrises to be more point-worthy and chains less point-worthy.
+
+InDev 0.2.8:
+- Fixed bug where pressing hard dropping during spawn delay caused a premature loss.
+- Fixed bug where soft drop lock delay did not work as intended.
+- Implemented rudimentary timed mode.
+- Fixed a bug where DAS would not charge if the key was held before the old piece was dropped.
