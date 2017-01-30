@@ -36,13 +36,13 @@ class MainMenu (Menu):
 		event = super(MainMenu, self).eval_input()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
-				if self.selections[self.selection[0]][self.selection[1]].action == 'play':
+				if self.get_selected(*self.selection).action == 'play':
 					self.user.state = 'play_menu'
-				elif self.selections[self.selection[0]][self.selection[1]].action == 'score':
+				elif self.get_selected(*self.selection).action == 'score':
 					pass
-				elif self.selections[self.selection[0]][self.selection[1]].action == 'options':
+				elif self.get_selected(*self.selection).action == 'options':
 					pass
-				elif self.selections[self.selection[0]][self.selection[1]].action == 'quit':
+				elif self.get_selected(*self.selection).action == 'quit':
 					self.user.state = 'quit'
 
 	def run (self):
@@ -76,23 +76,30 @@ class PlayMenu (Menu):
 		tmargin = 20
 		height = 80
 
-		self.selections = [[MenuSelection(self, 'arcade', 'Arcade Mode', (self.rect.left + hmargin, self.rect.top + tmargin), ((self.rect.width - spacing - (2 * hmargin)) / 2, height))], 
-							[MenuSelection(self, 'time', 'Timed Mode', (self.rect.centerx + (spacing / 2), self.rect.top + tmargin), ((self.rect.width - spacing - (2 * hmargin)) / 2, height))]]
+		self.selections = [[MenuSelection(self, 'arcade', 'Arcade Mode', (self.rect.left + hmargin, self.rect.top + tmargin), ((self.rect.width - (2 * (spacing + hmargin))) / 3, height))], 
+							[MenuSelection(self, 'time', 'Timed Mode', (self.rect.left + hmargin + spacing + (self.rect.width - (2 * (spacing + hmargin))) / 3, self.rect.top + tmargin), ((self.rect.width - (2 * (spacing + hmargin))) / 3, height))],
+							[MenuSelection(self, 'free', 'Free Mode', (self.rect.left + hmargin + 2 * spacing + (2 * (self.rect.width - (2 * (spacing + hmargin))) / 3), self.rect.top + tmargin), ((self.rect.width - (2 * (spacing + hmargin))) / 3, height))]]
 		self.set_range()
 
 	def eval_input (self):
 		event = super(PlayMenu, self).eval_input()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
-				if self.selections[self.selection[0]][self.selection[1]].action == 'arcade':
+				if self.get_selected(*self.selection).action == 'arcade':
 					self.user.state = 'in_game'
 					self.user.gametype = 'arcade'
+					self.game.set_data()
 					self.reset()
-				"""
-				elif self.selections[self.selection[0]][self.selection[1]].action == 'time':
+				elif self.get_selected(*self.selection).action == 'time':
 					self.user.state = 'in_game'
+					self.user.gametype = 'time'
+					self.game.set_data()
 					self.reset()
-				"""
+				elif self.get_selected(*self.selection).action == 'free':
+					self.user.state = 'in_game'
+					self.user.gametype = 'free'
+					self.game.set_data()
+					self.reset()
 			elif event.key == pygame.K_x or event.key == pygame.K_ESCAPE:
 				self.user.state = 'main_menu'
 
@@ -132,16 +139,16 @@ class PauseMenu (Menu):
 		event = super(PauseMenu, self).eval_input()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
-				if self.selections[self.selection[0]][self.selection[1]].action == 'resume':
+				if self.get_selected(*self.selection).action == 'resume':
 					self.user.state = 'in_game'
 					self.reset()
-				if self.selections[self.selection[0]][self.selection[1]].action == 'restart':
+				if self.get_selected(*self.selection).action == 'restart':
 					self.user.state = 'in_game'
 					self.user.score = 0
 					self.user.last_score = 0
 					self.game.set_data()
 					self.reset()
-				elif self.selections[self.selection[0]][self.selection[1]].action == 'quit':
+				elif self.get_selected(*self.selection).action == 'quit':
 					self.user.state = 'main_menu'
 					self.user.score = 0
 					self.user.last_score = 0
@@ -191,13 +198,13 @@ class LossMenu (Menu):
 		event = super(LossMenu, self).eval_input()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
-				if self.selections[self.selection[0]][self.selection[1]].action == 'restart':
+				if self.get_selected(*self.selection).action == 'restart':
 					self.user.state = 'in_game'
 					self.user.score = 0
 					self.user.last_score = 0
 					self.game.set_data()
 					self.reset()
-				elif self.selections[self.selection[0]][self.selection[1]].action == 'quit':
+				elif self.get_selected(*self.selection).action == 'quit':
 					self.user.state = 'main_menu'
 					self.user.score = 0
 					self.user.last_score = 0

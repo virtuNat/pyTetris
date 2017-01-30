@@ -435,6 +435,7 @@ class Grid (PositionedSurface):
 		else:
 			self.user.current_combo = 1.0
 			self.user.combo_ctr = 0
+		return lines_cleared
 
 	def update (self):
 		# Display the grid background and constituent blocks.

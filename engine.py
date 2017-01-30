@@ -104,29 +104,51 @@ class Tetris (object):
 		self.storedshape = None # Tetromino currently being held for later use.
 
 		self.paused = False # Alerts the game to pause.
-		self.collision = False # Collision flag for wall kicks
-		self.ghost_collide = False # Collision flag for ghost shape
-		self.floor_kick = True # Can't floor kick if False
-		self.soft_drop = False # Tetromino drops faster if True
+		self.collision = False # Collision flag for wall kicks.
+		self.floor_kick = True # Can't floor kick if False.
+		self.soft_drop = False # Tetromino drops faster if True.
 		self.soft_pos = 21 # The height at which a piece began soft dropping.
-		self.hold_lock = False # Can't swap Held pieces if True
+		self.hold_lock = False # Can't swap Held pieces if True.
 
-		self.normdelay = 30 # Number of frames between the ones where the tetrimino falls by one block.
-		self.softdelay = 2 # ^ during soft drop.
-		self.entrydelay = 10 # Delay between dropping a piece and spawning a new one.
+		if self.user.gametype == 'arcade': # Arcade mode starts rather slow.
+			self.normdelay = 45
+			self.softdelay = 6
+			self.entrydelay = 30
+
+			self.shift_delay = 25
+			self.shift_fdelay = 4
+
+			self.timer = 0
+			self.level = 0 # Current level in arcade mode.
+		elif self.user.gametype == 'time': # Timed mode is faster to induce stress.
+			self.normdelay = 10
+			self.softdelay = 1
+			self.entrydelay = 10
+
+			self.shift_delay = 8
+			self.shift_fdelay = 1
+
+			self.timer = 5 * 60000 # Remaining time in timed mode.
+		else: # Free mode stays at a comfortable pace.
+			self.normdelay = 30 # Number of frames between the ones where the tetrimino falls by one block.
+			self.softdelay = 2 # ^ during soft drop.
+			self.entrydelay = 20 # Delay between dropping a piece and spawning a new one.
+
+			self.shift_delay = 20 # The frame delay between holding the button and auto-shifting.
+			self.shift_fdelay = 2 # The frame delay between shifts when auto-shifting.
+
+			self.timer = 0 # How long the game has been playing.
+
 		self.entryframe = 0 # Frame counter for the above delay.
 		self.entryflag = True # True if a piece is currently in play, false if the player is waiting for a new one.
 
 		self.shift_dir = '0' # The current direction the tetrimino is shifting.
-		self.shift_delay = 20 # The frame delay between holding the button and auto-shifting.
-		self.shift_fdelay = 2 # The frame delay between shifts when auto-shifting.
 		self.shift_frame = 0 # The frame counter for auto-shifting.
 
-		self.frame = 0 # Frame counter
-		self.delay = self.normdelay # Currently used delay
+		self.frame = 0 # The frame counter.
+		self.delay = self.normdelay # Currently used delay.
 
-		self.level = 0 # Current level in arcade mode.
-		self.timer = 10 * 3600 # Current timer in timed mode.
+		self.lines_cleared = 0	
 
 	def gen_shapelist (self):
 		# Generate a 'bag' of one of each tetrimino shape in random order.
@@ -134,7 +156,6 @@ class Tetris (object):
 
 	def set_shape (self, shape):
 		# Set the active shape.
-		self.frame = 1
 		self.floor_kick = True
 		self.hold_lock = False
 		if isinstance(shape, Shape):
@@ -143,6 +164,7 @@ class Tetris (object):
 			self.freeshape = Shape(shape)
 		self.newshape = self.freeshape.copy()
 		self.ghostshape = self.freeshape.copy(ghost = True)
+		self.eval_ghost(False)
 		# Test for obstructions. If they exist, the player lost.
 		self.eval_loss()
 
@@ -172,6 +194,7 @@ class Tetris (object):
 					self.storedshape = Shape(self.newshape.form)
 					self.newshape = self.freeshape.copy()
 		else:
+			# Allow pieces to be swapped during spawn delay.
 			if self.storedshape is None:
 				self.storedshape = Shape(self.nextshapes[0].form)
 				self.nextshapes.pop(0)
@@ -201,24 +224,25 @@ class Tetris (object):
 				self.shift_frame = self.shift_delay
 				if self.entryflag:
 					self.newshape.translate((1, 0))
+			elif event.key == pygame.K_DOWN: # Toggle soft drop
+					self.soft_drop = True
+					self.soft_pos = self.newshape.pos[1]
 
 			elif event.key == pygame.K_LSHIFT: # Hold tetrimino to storage
 				self.hold_shape()
 
 			elif self.entryflag:
-				if event.key == pygame.K_UP: # Rotate
+				if event.key == pygame.K_z: # Rotate CCW
+					self.newshape.rotate(-90)
+					self.wall_kick()
+				elif event.key == pygame.K_x: # Rotate CW
 					self.newshape.rotate(90)
 					self.wall_kick()
-
-				elif event.key == pygame.K_DOWN: # Toggle soft drop
-					self.soft_drop = True
-					self.soft_pos = self.newshape.pos[1]
+				
 				elif event.key == pygame.K_SPACE: # Hard drop
 					self.user.hard_flag = True
 					self.ghostshape.copy_to(self.freeshape)
-					self.user.eval_drop_score(self.ghostshape.pos[1] - self.newshape.pos[1]) 
-					self.shape_to_grid()
-					self.eval_clear()
+					self.eval_fallen(self.ghostshape.pos[1] - self.newshape.pos[1])
 
 			if self.user.debug:
 				if event.key == pygame.K_9: # Add garbage line
@@ -268,18 +292,18 @@ class Tetris (object):
 			else:
 				self.newshape.copy_to(self.freeshape)
 
-	def eval_ghost (self):
+	def eval_ghost (self, show = True):
 		# Evaluate and display the position of the ghost tetrimino.
 		self.freeshape.copy_to(self.ghostshape, ghost = True)
-		self.ghost_collide = False
-		while not self.ghost_collide:
+		ghost_collide = False
+		while not ghost_collide:
 			self.ghostshape.translate((0, 1))
 			for block in self.ghostshape.blocks:
 				if self.collision_test(block, self.ghostshape):
-					self.ghost_collide = True
+					ghost_collide = True
 					break
 		self.ghostshape.translate((0, -1))
-		self.ghostshape.display()
+		if show: self.ghostshape.display()
 
 	def collision_test (self, block, shape):
 		# Shortcut if statement.
@@ -496,20 +520,28 @@ class Tetris (object):
 			else: self.newshape.copy_to(self.freeshape)
 
 	def eval_gravity (self):
+		self.newshape.translate((0, 1))
+		gravflag = False
 		for block in self.newshape.blocks:
 			# If collision occurs due to the gravity timer running out:
 			if self.collision_test(block, self.newshape):
-				# Copy shape to grid.
-				self.user.eval_drop_score(self.ghostshape.pos[1] - self.soft_pos if self.soft_drop else 0)
-				self.shape_to_grid()
-				self.eval_clear()
-
-				if self.soft_drop and self.frame == self.softdelay:
-					self.frame = self.normdelay
+				gravflag = True
+		self.newshape.translate((0, -1))
+		return gravflag
+		"""
 		else:
 			self.newshape.copy_to(self.freeshape)
+		"""
 
-	def eval_clear (self):
+	def eval_fallen (self, posdif):
+		# Evaluates what happens to a tetrimino when it has just fallen.
+
+		# Reset DAS if the user has not let go of the key yet.
+		if self.shift_frame == 0 and self.shift_dir != '0':
+			self.shift_frame = self.shift_delay
+		# Evaluate drop score and cut piece to the matrix.
+		self.user.eval_drop_score(posdif)
+		self.shape_to_grid()
 		# Clear lines if a piece dropped.
 		self.grid.clear_lines(self.user.cleartype, self.storedshape, self.nextshapes)
 		self.grid.update()
@@ -517,11 +549,11 @@ class Tetris (object):
 		self.user.twist_flag = False
 		self.entryflag = False
 		self.entryframe = self.entrydelay
-
+		# Unset active piece.
 		self.freeshape = Shape(7)
 		self.newshape = Shape(7)
 		self.ghostshape = Shape(7)
-
+		# Prevent a bug where losing would force pieces to spawn.
 		self.frame = 0
 		if self.user.state == 'loser':
 			self.frame = 30
@@ -593,10 +625,6 @@ class Tetris (object):
 		# Display and manage the grid.
 		self.grid.update()
 
-		if not self.entryflag:
-			self.entryflag = True
-			self.next_shape()
-
 		# Evaluate inputs and kick if necessary.
 		self.eval_input()
 		# Evaluate translation.
@@ -605,18 +633,38 @@ class Tetris (object):
 		if self.entryflag:
 			# Evaluate ghost tetrimino and display it.
 			self.eval_ghost()
-
+			# Set the gravity delay to the appropriate value depending on whether soft drop is active or not.
 			if self.soft_drop: self.delay = self.softdelay
 			else: self.delay = self.normdelay
 
-			if self.frame < self.delay: self.frame += 1
-			else: self.frame = 0
 			# Evaluate gravity.
-			if self.frame == 0:
-				self.newshape.translate((0, 1))
-				self.eval_gravity()
+			if self.eval_gravity(): # If collision will occur due to gravity:
+				if self.frame < self.normdelay: self.frame += 1 # Use default timer instead of the soft drop timer.
+				else: # Evaluate dropped piece.
+					self.frame = 0
+					self.eval_fallen(self.ghostshape.pos[1] - self.soft_pos if self.soft_drop else 0)
+
+			else: # If there won't be gravity collision:
+				if self.frame < self.delay: self.frame += 1
+				else: # Move shape down.
+					self.frame = 0
+					self.newshape.translate((0, 1))				
 		elif self.entryframe > 0:
 			self.entryframe -= 1
+		else:
+			self.entryflag = True
+			self.next_shape()
+
+		if self.user.gametype == 'arcade':
+			self.render_text(str(self.level + 1), (255, 255, 255), bottomright = (790, 530))
+		elif self.user.gametype == 'time':
+			# Display and evaluate timed mode's timer.
+			self.render_text('{}:{:02d}:{:02d}'.format(self.timer // 60000, self.timer // 1000 % 60, self.timer % 1000 // 10), (255, 255, 255), bottomright = (790, 530))
+			if self.timer > 0:
+				self.timer -= clock.get_time()
+			else:
+				self.timer = 0
+				self.user.state = 'loser'
 
 		# Display current score.
 		self.render_text(str(self.user.score), (255, 255, 255), bottomright = (790, 590))

@@ -13,6 +13,7 @@ def main ():
 	loss_menu = LossMenu(user)
 	
 	game = Tetris(user, pause_menu, loss_menu)
+	play_menu.game = game
 	pause_menu.game = game
 	loss_menu.game = game
 

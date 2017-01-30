@@ -205,7 +205,7 @@ class Menu (AnimatedSprite):
 		self.shortime = 6
 		self.movetime = self.basetime
 
-		self.selections[self.selection[0]][self.selection[1]].set_select(False)
+		self.get_selected(*self.selection).set_select(False)
 
 	def set_range (self):
 		# Initializes the range value of the menu selections. Safe to call more than once on one initialization.
@@ -213,9 +213,12 @@ class Menu (AnimatedSprite):
 
 	def reset (self):
 		# Resets the menu 'cursor' back to the default.
-		self.selections[self.selection[0]][self.selection[1]].set_select(False)
+		self.get_selected(*self.selection).set_select(False)
 		self.selection = [0, 0]
-		self.selections[0][0].set_select(True)
+		self.get_selected(*self.selection).set_select(True)
+
+	def get_selected(self, i, j):
+		return self.selections[i][j]
 
 	def eval_input (self):
 		# Evaluate user input. Handling of specific options is menu-specific.
@@ -254,7 +257,7 @@ class Menu (AnimatedSprite):
 		# Update the movement values per frame.
 		self.eval_input()
 		# Move selection.
-		self.selections[self.selection[0]][self.selection[1]].set_select(False)
+		self.get_selected(*self.selection).set_select(False)
 		if self.left:
 			if not self.moved:
 				self.selection[0] -= 1
@@ -298,7 +301,7 @@ class Menu (AnimatedSprite):
 			elif self.selection[i] < 0:
 				self.selection[i] = self.range[i] - 1
 		# print self.selection
-		self.selections[self.selection[0]][self.selection[1]].set_select(True)
+		self.get_selected(*self.selection).set_select(True)
 		for items in self.selections:
 			for item in items:
 				item.update()
