@@ -94,5 +94,11 @@ InDev 0.2.7:
 InDev 0.2.8:
 - Fixed bug where pressing hard dropping during spawn delay caused a premature loss.
 - Fixed bug where soft drop lock delay did not work as intended.
-- Implemented rudimentary timed mode.
+- Implemented rudimentary Timed mode.
 - Fixed a bug where DAS would not charge if the key was held before the old piece was dropped.
+
+InDev 0.2.9:
+- Fixed display error during line clear due to outdated code.
+- Optimized code for readability (again), especially with regards to score tracking.
+- Timed mode is now faster than Free mode in pacing.
+- Added up key as quick clockwise rotate shortcut.
