@@ -4,32 +4,26 @@ pygame implementation of a Tetris clone.
 
 # Pre-repository changelog:
 
-InDev 0.0.0: 
+PreDev 0.0: 
 - Implemented menu classes.
 - Created basic runtime engine for python games.
-
-InDev 0.0.1: 
 - Created Block class, representing a struct of a single tetris tile.
 - Created Shape class, representing a bunch of Blocks acting as one.
-
-InDev 0.0.2: 
 - Created Grid class, allowing blocks from tetriminos to exist in the grid after being dropped.
-- Fixed bug where the display would not align to the blocks properly.
 
-InDev 0.0.3: 
+PreDev 0.1: 
+- Fixed bug where the display would not align to the blocks properly.
 - Increased block size to 25x25px from 20x20px.
 - Implemented naive gravity.
 
-InDev 0.0.4: 
+PreDev 0.2: 
 - Created invisible wall of blocks in the grid to prevent the necessity of wall and floor collision checks.
 - Optimized gravity to only require block collision checks.
-
-InDev 0.0.5: 
 - Implemented rudimentary block collision detection between active tetrimino and grid.
 - Implemented translation and rotation controls.
 - Implemented SRS random tetromino generation system.
 
-InDev 0.0.6: 
+PreDev 0.3: 
 - Reworked tetrimino evaluation, separating it into rotation, translation, and gravity components.
 - Fixed bug where tetriminos moved by shifting or gravity would intersect with other blocks.
 
@@ -79,11 +73,12 @@ InDev 0.2.5:
 - Implemented proper handling of losing.
 - Rebalanced the score values to more closely match standards.
 - Implemented Delayed Auto-Shifting.
-- Streamlined the running code, making it more readable and more efficient, undoing 0.0.6's separation.
+- Streamlined the running code, making it more readable and more efficient, undoing PreDev 0.3's separation.
 
 InDev 0.2.6:
 - Implemented tetrimino spawn delay.
 - Allowed DAS to charge during spawn delay.
+- Fixed bug that caused ghost piece to lag behind by one frame.
 
 InDev 0.2.7:
 - Allowed swapping held piece during spawn delay.
@@ -102,3 +97,14 @@ InDev 0.2.9:
 - Optimized code for readability (again), especially with regards to score tracking.
 - Timed mode is now faster than Free mode in pacing.
 - Added up key as quick clockwise rotate shortcut.
+
+# pyTetris Alpha
+
+Alpha 1.0.0:
+- Implemented Arcade mode. Levels and rising difficulty rely on the number of lines cleared by the player.
+- Implemented Timed mode. Fixed a bug where DAS would cause a piece to be suspended while in contact with another block in this mode.
+- The older mode has been renamed Free mode and can be played for casual Tetris.
+- Removed redundant display code at shapes.py and replaced it with an optimized display function.
+- Updated textures for game.
+- Fixed bug where pausing would cause a falling block to not lock.
+- Fixed bug where garbage lines would be subject to cascading gravity.
