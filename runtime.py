@@ -292,4 +292,3 @@ class Menu (AnimatedSprite):
 		for items in self.selections:
 			for item in items:
 				item.update()
-		

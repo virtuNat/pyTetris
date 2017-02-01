@@ -23,7 +23,7 @@ class Block (AnimatedSprite):
 		self.color = color # Block color.
 		self.ghost = ghost # Ghost state.
 		self.links = links # Which direction a block is linked to. 0, 1, 2, 3, for L, U, R, D respectively.
-		self.set_color(color, ghost)
+		self.set_graphic(color, ghost)
 		super(Block, self).__init__(self.image)
 		self.relpos = relpos
 		self.fallen = fallen
@@ -31,9 +31,8 @@ class Block (AnimatedSprite):
 	def __repr__ (self):
 		return "Tetris Block at" + str(self.relpos)
 
-	def set_color (self, color, ghost = False):
-		# Determines block graphic based on its links. Refer to block.png in the textures folder.
-		# Links can be wrong due to bugs, which are usually safe unless non-naive line clears are used.
+	def set_graphic (self, color, ghost = False):
+		# Determines block graphic based on its links. Refer to tileset.png in the textures folder.
 		color = (color * 50) + (25 * int(ghost))
 		linknum = len(self.links)
 		if linknum == 0:
@@ -66,8 +65,6 @@ class Block (AnimatedSprite):
 					form = 13
 			else:
 				form = 12
-		else: # Isn't used, normally.
-			form = 15
 		self.image = block_source.subsurface(pygame.Rect(color, form * 25, 25, 25))
 		if self.ghost: self.image.set_alpha(191)
 
@@ -146,7 +143,7 @@ class Shape (object):
 		newshape.blocks = [ ] 
 		for i in range(len(self.blocks)):
 			newshape.blocks.append(self.blocks[i].copy(ghost = ghost))
-			newshape.blocks[i].set_color(self.blocks[i].color, ghost)
+			newshape.blocks[i].set_graphic(self.blocks[i].color, ghost)
 		return newshape
 
 	def copy_to (self, dest, ghost = False):
@@ -155,7 +152,7 @@ class Shape (object):
 		dest.state = self.state
 		for i in range(len(self.blocks)):
 			self.blocks[i].copy(dest.blocks[i], ghost)
-			dest.blocks[i].set_color(self.blocks[i].color, ghost)
+			dest.blocks[i].set_graphic(self.blocks[i].color, ghost)
 
 	def rotate (self, angle):
 		# SRS implementation of Tetromino rotation. It is done relative to shape.pos unless it's an I.
@@ -188,7 +185,7 @@ class Shape (object):
 					block.links = [block.links[i] + 2 if block.links[i] < 2 else block.links[i] - 2 for i in range(len(block.links))]
 				else: # Just in case the programmer (me) is stupid.
 					raise ValueError('Tetriminos can only rotate in increments of 90 degrees.')
-				block.set_color(block.color, block.ghost)
+				block.set_graphic(block.color, block.ghost)
 				block.relpos = [tmp[i] if self.form > 1 else int(tmp[i] + 0.5) for i in range(2)]
 
 	def translate (self, dpos = (0, 0)):
@@ -240,11 +237,16 @@ class Grid (PositionedSurface):
 				if i != 11 and i != hole - 1:
 					links.append(2)
 				garbage[i].links = links
-				garbage[i].set_color(7)
+				garbage[i].set_graphic(7)
 
 		self.cells.insert(22, garbage)
 		self.cells.pop(0)
 		self.update()
+
+	def paste_shape (self, shape):
+		# Paste a shape to this grid.
+		for i in range(len(shape.blocks)):
+			self.cells[shape.poslist[i][1]][shape.poslist[i][0]] = shape.blocks[i]
 
 	def flood_fill (self, block_list, index):
 		# Recursive blind flood fill function.
@@ -284,7 +286,7 @@ class Grid (PositionedSurface):
 			1 refers to sticky clearing, where the floating blocks are grouped by those that share sides.
 			2 refers to cascade clearing, where the original block groupings are preserved.
 
-			In both sticky and cascade clearing, the groups will fall as if they were free tetrominos, then 
+			In both sticky and cascade clearing, the groups will fall as if they were still active, then 
 			the lines will be re-evaluated to see if another clear happened.
 		"""
 		# Track how many lines are cleared per chain.
@@ -326,11 +328,11 @@ class Grid (PositionedSurface):
 						# Remove upward links from blocks below.
 						if self.cells[i + 1][j] is not None and 3 in self.cells[i][j].links:
 							self.cells[i + 1][j].links.remove(1)
-							self.cells[i + 1][j].set_color(self.cells[i + 1][j].color)
+							self.cells[i + 1][j].set_graphic(self.cells[i + 1][j].color)
 						# Remove downward links from blocks above.
 						if self.cells[i - 1][j] is not None and 1 in self.cells[i][j].links:
 							self.cells[i - 1][j].links.remove(3)
-							self.cells[i - 1][j].set_color(self.cells[i - 1][j].color)
+							self.cells[i - 1][j].set_graphic(self.cells[i - 1][j].color)
 						# Just leave the row empty if the method is sticky or cascade.
 						if method > 0:
 							self.cells[i][j] = None
@@ -403,9 +405,7 @@ class Grid (PositionedSurface):
 											shape.translate((0, -1))
 											# If it collided with a fallen block, then the shape has fallen. Copy it back to the matrix.
 											if shape.blocks[0].fallen:
-												# Uses similar code to Tetris.shape_to_grid()
-												for oldblock in shape.blocks:
-													self.cells[oldblock.relpos[1] + shape.pos[1]][oldblock.relpos[0] + shape.pos[0]] = Block([oldblock.relpos[0] + shape.pos[0], oldblock.relpos[1] + shape.pos[1]], oldblock.color, oldblock.links, fallen = True)
+												self.paste_shape(shape)
 											# If it either did not collide, or collided with another floating shape, copy it to the tempgrid instead.
 											else:
 												tempgrid.append(shape.copy())
@@ -415,11 +415,10 @@ class Grid (PositionedSurface):
 						# Copy all of the tempgrid's shapes back to the matrix.
 						if len(tempgrid) > 0:
 							for shape in tempgrid:
-								# Uses similar code to Tetris.shape_to_grid()
-								for oldblock in shape.blocks:
-									self.cells[oldblock.relpos[1] + shape.pos[1]][oldblock.relpos[0] + shape.pos[0]] = Block([oldblock.relpos[0] + shape.pos[0], oldblock.relpos[1] + shape.pos[1]], oldblock.color, oldblock.links)
+								self.paste_shape(shape)
 							
 							# Display intermediate drops so the user can see the combo.
+							# Note: The game will not respond to input during this time.
 							pygame.event.pump()
 							screen.blit(game_bg, (0, 0))
 							self.update()
@@ -427,7 +426,7 @@ class Grid (PositionedSurface):
 							pygame.display.flip()
 							pygame.time.wait(40)
 
-						# If the tempgrid list is empty, that means that all the blocks have fallen. Check if the fallen blocks caused another line clear.
+					# If the tempgrid list is empty, that means that all the blocks have fallen. Check if the fallen blocks caused another line clear.
 					lines_cleared.append(0)
 		if len(lines_cleared) > 1 or lines_cleared[0] > 0:
 			# Determine if the board was cleared.

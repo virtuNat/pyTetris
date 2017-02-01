@@ -97,7 +97,7 @@ class User (object):
 			self.level = 127 + ((self.lines_cleared - 1920) // 30)
 		elif self.lines_cleared <= 6400: # Up to level 256, increment every 40 lines.
 			self.level = 191 + ((self.lines_cleared - 3840) // 40)
-		else: self.level = 255
+		else: self.level = 256
 
 class Tetris (object):
 	""" 
@@ -121,6 +121,7 @@ class Tetris (object):
 
 		self.grid = Grid(user)
 		self.grid.game = self
+		self.grid.pause_menu = pause_menu
 		self.set_data()
 
 		print "LEFT and RIGHT arrow keys to shift tetrimino left and right."
@@ -207,11 +208,6 @@ class Tetris (object):
 		if len(self.nextshapes) < 7:
 			self.nextshapes.extend(self.gen_shapelist())
 
-	def shape_to_grid (self):
-		# Cut the active shape to the grid.
-		for i in range(4):
-			self.grid.cells[self.freeshape.poslist[i][1]][self.freeshape.poslist[i][0]] = self.freeshape.blocks[i]
-
 	def hold_shape (self):
 		# Holds a tetrimino in storage until retrieved.
 		if self.entry_flag:
@@ -246,19 +242,17 @@ class Tetris (object):
 			pygame.mixer.music.pause()
 			self.paused = True
 
-		if event.type == pygame.QUIT:
+		if event.type == pygame.QUIT: # Exits the game.
 			self.user.state = 'quit'
 		elif event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_LEFT: # Shift left
 				self.shift_dir = 'l'
 				self.shift_frame = self.shift_delay
-				if self.entry_flag:
-					self.newshape.translate((-1, 0))
+				if self.entry_flag: self.newshape.translate((-1, 0))
 			elif event.key == pygame.K_RIGHT: # Shift right
 				self.shift_dir = 'r'
 				self.shift_frame = self.shift_delay
-				if self.entry_flag:
-					self.newshape.translate((1, 0))
+				if self.entry_flag: self.newshape.translate((1, 0))
 			elif event.key == pygame.K_DOWN: # Toggle soft drop
 				self.soft_drop = True
 				self.soft_pos = self.newshape.pos[1]
@@ -278,7 +272,7 @@ class Tetris (object):
 					self.user.hard_flag = True
 					self.ghostshape.copy_to(self.freeshape)
 					self.eval_fallen(self.ghostshape.pos[1] - self.freeshape.pos[1])
-					
+				
 			if self.user.debug:
 				if self.user.gametype == 'arcade' and event.key == pygame.K_8:
 					self.user.lines_cleared += 50
@@ -303,6 +297,7 @@ class Tetris (object):
 						self.set_shape(5) # J
 					elif event.key == pygame.K_7:
 						self.set_shape(6) # L
+			
 		elif event.type == pygame.KEYUP:
 			if event.key == pygame.K_DOWN:
 				self.soft_drop = False
@@ -364,7 +359,6 @@ class Tetris (object):
 			if self.collision and ((pos[1] < 0 and self.floor_kick) or pos[1] >= 0):
 				# Disable the floor kick flag if the position would make the piece go up.
 				if pos[1] < 0: self.floor_kick = False
-				self.collision = False
 				# Set the test position to the original position before translating.
 				self.newshape.pos = self.freeshape.pos
 				self.newshape.translate(pos)
@@ -373,6 +367,9 @@ class Tetris (object):
 					if self.collision_test(block, self.newshape):
 						self.collision = True
 						break
+				else:
+					self.collision = False
+					break
 	
 	def wall_kick (self):
 		# Arika Implementation of wall kicks for I-symmetricity about the y-axis.
@@ -460,8 +457,8 @@ class Tetris (object):
 			self.shift_frame = self.shift_delay
 		# Evaluate drop score and cut piece to the matrix.
 		self.user.eval_drop_score(posdif)
-		self.shape_to_grid()
-		# Clear lines if a piece dropped, and add the number of lines cleared to the total.
+		self.grid.paste_shape(self.freeshape)
+		# Check if lines were cleared, and add the number of lines cleared to the total if any.
 		self.user.lines_cleared += sum(self.grid.clear_lines(self.user.cleartype))
 		self.grid.update()
 		# Reset flags pertaining to dropped state of the tetrimino.
@@ -534,6 +531,8 @@ class Tetris (object):
 			self.user.state = 'loser'
 
 	def ramp_arcade (self, oldlevel):
+		# Increase the level based on the number of lines cleared, and check if there's a difference.
+		self.user.eval_level()
 		# Responsible for making the Arcade mode more difficult over time.
 		if oldlevel < self.user.level:
 			# Add garbage on a level up.
@@ -546,12 +545,14 @@ class Tetris (object):
 			self.shift_fdelay = 4 - (3 * self.user.level // 60) if self.user.level < 60 else 1
 
 		# At half level, periodically spawn garbage lines.
-		if self.user.level >= 127:
+		if self.user.level >= 128:
 			if self.line_frame == 0:
 				self.grid.add_garbage()
 				# At max level, make them spawn faster.
-				if self.user.level == 255:
+				if self.user.level == 256:
 					self.line_frame = self.line_delay * 0.6
+				elif self.user.level >= 192:
+					self.line_frame = self.line_delay * 0.8
 				else:
 					self.line_frame = self.line_delay
 			else:
@@ -639,9 +640,7 @@ class Tetris (object):
 
 		if self.user.gametype == 'arcade':
 			# Evaluate current arcade level.
-			oldlevel = self.user.level
-			self.user.eval_level()
-			self.ramp_arcade(oldlevel)
+			self.ramp_arcade(self.user.level)
 			self.user.timer += clock.get_time()
 		elif self.user.gametype == 'timed':
 			# Evaluate the timer in timed mode.
