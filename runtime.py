@@ -58,6 +58,13 @@ def load_image (name, alpha = None, colorkey = None):
 		image = image.convert_alpha()
 	return image
 
+def load_music(name):
+	return pygame.mixer.music.load(os.path.join('music', name))
+
+def restart_music():
+	pygame.mixer.music.rewind()
+	pygame.mixer.music.play()
+
 class PositionedSurface (object):
 	"""
 		PositionedSurface is a custom class that packs pygame Surfaces and Rects together for 
@@ -75,36 +82,7 @@ class PositionedSurface (object):
 
 	def set (self, **pos):
 		for key, value in pos.items():
-			if key == 'center': 
-				self.rect.center = value
-			elif key == 'centerx':
-				self.rect.centerx = value
-			elif key == 'centery':
-				self.rect.centery = value
-			elif key == 'topleft':
-				self.rect.topleft = value
-			elif key == 'topright':
-				self.rect.topleft = value
-			elif key == 'bottomleft':
-				self.rect.topleft = value
-			elif key == 'bottomright':
-				self.rect.topleft = value
-			elif key == 'midleft':
-				self.rect.midleft = value
-			elif key == 'midright':
-				self.rect.midright = value
-			elif key == 'midtop':
-				self.rect.midtop = value
-			elif key == 'midbottom':
-				self.rect.midbottom = value
-			elif key == 'top': 
-				self.rect.top = value
-			elif key == 'left':
-				self.rect.left = value
-			elif key == 'right':
-				self.rect.right = value
-			elif key == 'bottom':
-				self.rect.bottom = balue
+			setattr(self.rect, key, value)
 
 	def move_rt (self, speed, angle):
 		# Convert to rectangular coordinates and add the offset.
@@ -130,8 +108,11 @@ class PositionedSurface (object):
 
 class AnimatedSprite (PositionedSurface):
 	"""docstring for AnimatedSprite"""
-	def __init__(self, source, rect = None, **initpos):
+	def __init__ (self, source, rect = None, **initpos):
 		super(AnimatedSprite, self).__init__(source, rect, **initpos)
+
+	def animate (self):
+		pass
 
 class MenuSelection (AnimatedSprite):
 	"""

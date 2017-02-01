@@ -19,7 +19,7 @@ class MainMenu (Menu):
 		bg = pygame.Surface((210, 300))
 		bg.fill((0, 255, 0))
 		super(MainMenu, self).__init__(user, bg)
-		self.set(midbottom = (screen.get_width() / 2, screen.get_rect().bottom - 25))
+		self.set(midtop = (screen.get_width() / 2, 250))
 
 		hmargin = 15 # horizontal margin in pixels
 		tmargin = 20 # top margin in pixels
@@ -66,10 +66,10 @@ class PlayMenu (Menu):
 	"""
 
 	def __init__(self, user):
-		bg = pygame.Surface((480, 300))
+		bg = pygame.Surface((620, 300))
 		bg.fill((0, 255, 64))
 		super(PlayMenu, self).__init__(user, bg)
-		self.set(midbottom = (screen.get_width() / 2, screen.get_rect().bottom - 100))
+		self.set(midtop = (screen.get_width() / 2, 250))
 
 		hmargin = 20
 		spacing = 14
@@ -77,7 +77,7 @@ class PlayMenu (Menu):
 		height = 80
 
 		self.selections = [[MenuSelection(self, 'arcade', 'Arcade Mode', (self.rect.left + hmargin, self.rect.top + tmargin), ((self.rect.width - (2 * (spacing + hmargin))) / 3, height))], 
-							[MenuSelection(self, 'time', 'Timed Mode', (self.rect.left + hmargin + spacing + (self.rect.width - (2 * (spacing + hmargin))) / 3, self.rect.top + tmargin), ((self.rect.width - (2 * (spacing + hmargin))) / 3, height))],
+							[MenuSelection(self, 'timed', 'Timed Mode', (self.rect.left + hmargin + spacing + (self.rect.width - (2 * (spacing + hmargin))) / 3, self.rect.top + tmargin), ((self.rect.width - (2 * (spacing + hmargin))) / 3, height))],
 							[MenuSelection(self, 'free', 'Free Mode', (self.rect.left + hmargin + 2 * spacing + (2 * (self.rect.width - (2 * (spacing + hmargin))) / 3), self.rect.top + tmargin), ((self.rect.width - (2 * (spacing + hmargin))) / 3, height))]]
 		self.set_range()
 
@@ -86,20 +86,16 @@ class PlayMenu (Menu):
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
 				if self.get_selected(*self.selection).action == 'arcade':
-					self.user.state = 'in_game'
 					self.user.gametype = 'arcade'
-					self.game.set_data()
-					self.reset()
-				elif self.get_selected(*self.selection).action == 'time':
-					self.user.state = 'in_game'
-					self.user.gametype = 'time'
-					self.game.set_data()
-					self.reset()
+				elif self.get_selected(*self.selection).action == 'timed':
+					self.user.gametype = 'timed'
 				elif self.get_selected(*self.selection).action == 'free':
-					self.user.state = 'in_game'
 					self.user.gametype = 'free'
-					self.game.set_data()
-					self.reset()
+
+				self.user.state = 'in_game'
+				self.game.set_data()
+				pygame.mixer.music.play()
+				self.reset()
 			elif event.key == pygame.K_x or event.key == pygame.K_ESCAPE:
 				self.user.state = 'main_menu'
 
@@ -141,12 +137,16 @@ class PauseMenu (Menu):
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
 				if self.get_selected(*self.selection).action == 'resume':
 					self.user.state = 'in_game'
+					pygame.mixer.music.unpause()
 					self.reset()
 				if self.get_selected(*self.selection).action == 'restart':
 					self.user.state = 'in_game'
 					self.user.reset()
 					self.game.set_data()
+					restart_music()
 					self.reset()
+				elif self.get_selected(*self.selection).action == 'options':
+					pass
 				elif self.get_selected(*self.selection).action == 'quit':
 					self.user.state = 'main_menu'
 					self.user.reset()
@@ -196,10 +196,13 @@ class LossMenu (Menu):
 					self.user.state = 'in_game'
 					self.user.reset()
 					self.game.set_data()
+					restart_music()
 					self.reset()
+				elif self.get_selected(*self.selection).action == 'options':
+					pass
 				elif self.get_selected(*self.selection).action == 'quit':
 					self.user.state = 'main_menu'
-					self.reset()
+					self.user.reset()
 					self.game.set_data()
 					self.reset()
 
@@ -210,3 +213,11 @@ class LossMenu (Menu):
 		self.render_text("Your score was: " + str(self.loss_score), (255, 255, 255), midtop = (self.rect.centerx, self.rect.top + 30))
 		super(LossMenu, self).run()
 		pygame.display.flip()
+
+class OptionMenu (Menu):
+	"""
+		The Options Menu allows the user to edit game settings for more convenient play.
+	"""
+	def __init__(self, arg):
+		super(OptionMenu, self).__init__()
+		self.arg = arg

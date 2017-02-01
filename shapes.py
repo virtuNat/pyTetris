@@ -4,8 +4,8 @@ try:
 except ImportError, error:
 	print "Runtime has fucking failed:", error
 
-block_source = load_image('block.png')
-grid_source = load_image('grid.png', colorkey = (0, 0, 0))
+block_source = load_image('tileset.png')
+grid_source = load_image('display.png', colorkey = (0, 0, 0))
 game_bg = pygame.Surface(screen.get_size())
 game_bg.fill((0, 0, 0))
 
@@ -115,6 +115,10 @@ class Shape (object):
 		elif form == 7: # Blank
 			self.blocks = [ ]
 
+	def __getattr__ (self, name):
+		if name == 'poslist':
+			return [[block.relpos[i] + self.pos[i] for i in range(2)] for block in self.blocks]
+
 	def __repr__ (self):
 		if self.form == 0:
 			shapetext = 'I'
@@ -183,7 +187,7 @@ class Shape (object):
 					tmp = -1 * block.relpos[0], -1 * block.relpos[1]
 					block.links = [block.links[i] + 2 if block.links[i] < 2 else block.links[i] - 2 for i in range(len(block.links))]
 				else: # Just in case the programmer (me) is stupid.
-					raise ValueError('Tetrominos can only rotate in increments of 90 degrees.')
+					raise ValueError('Tetriminos can only rotate in increments of 90 degrees.')
 				block.set_color(block.color, block.ghost)
 				block.relpos = [tmp[i] if self.form > 1 else int(tmp[i] + 0.5) for i in range(2)]
 
@@ -191,7 +195,7 @@ class Shape (object):
 		# Move the shape relative to its current position.
 		self.pos = [self.pos[i] + dpos[i] for i in range(2)]
 			
-	def display (self, ref = (225, 0), forced = False):
+	def display (self, ref = (225, 10), forced = False):
 		# Display the shape on the screen relative to the topleft corner of the matrix.
 		if forced:
 			if self.form < 1:
@@ -208,25 +212,25 @@ class Grid (PositionedSurface):
 		The Matrix upon which the game is played. When shapes fall and can no longer be moved, 
 		their blocks are stored here. Fallen block colors and links are kept.
 
-		The Grid object extends beyond the visible playing field 2 blocks in every direction (3 blocks right), 
+		The Grid object extends beyond the visible playing field 2 blocks in every direction, 
 		with empty space on the top to spawn new shapes in and invisible blocks on the walls and floor.
 
 		Said invisible blocks mean that the only required checks per frame are collision detection checks.
 	"""
 
 	def __init__(self, user):
-		super(Grid, self).__init__(grid_source, center = screen.get_rect().center)
+		super(Grid, self).__init__(grid_source, midbottom = (screen.get_rect().centerx, 580))
 		self.user = user
 		self.set_cells()
 
 	def set_cells (self):
 		# Sets the Matrix to have nothing but its invisible blocks.
-		self.cells = [[Block([i, j], 0, fallen = True) if i < 2 or i > 11 or j > 21 else None for i in range(15)] for j in range(24)]
+		self.cells = [[Block([i, j], 0, fallen = True) if i < 2 or i > 11 or j > 21 else None for i in range(14)] for j in range(24)]
 
 	def add_garbage (self):
 		# Adds a garbage row.
 		hole = random.randint(2, 11)
-		garbage = [Block([i, 22], 0, fallen = True) if i < 2 or i > 11 else None if i == hole else Block([i, 22], 7, fallen = True) for i in range(15)]
+		garbage = [Block([i, 22], 0, fallen = True) if i < 2 or i > 11 else None if i == hole else Block([i, 22], 7, fallen = True) for i in range(14)]
 		# Prevent the garbage blocks from clearing themselves.
 		for i in range(2, 12):
 			links = [ ]
@@ -335,7 +339,7 @@ class Grid (PositionedSurface):
 						# Delete the old row.
 						self.cells.pop(i)
 						# Create new blank row at the top.
-						self.cells.insert(0, [Block([i, 0], 0, fallen = True) if i < 2 or i > 11 else None for i in range(15)])
+						self.cells.insert(0, [Block([i, 0], 0, fallen = True) if i < 2 or i > 11 else None for i in range(14)])
 
 			# If the method is naive, then don't continue.
 			if method > 0:
@@ -436,7 +440,8 @@ class Grid (PositionedSurface):
 			self.user.eval_clear_score(lines_cleared, clearflag)
 			self.user.combo_ctr += 1
 			self.user.current_combo = self.user.combo_factor ** self.user.combo_ctr
-		else: # If no lines were cleared, break combo.
+		else: 
+			# If no lines were cleared, break combo.
 			self.user.current_combo = 1.0
 			self.user.combo_ctr = 0
 		return lines_cleared
@@ -450,5 +455,5 @@ class Grid (PositionedSurface):
 					block = self.cells[i][j]
 					block.relpos = [j, i]
 					if i > 1:
-						block.set(topleft = (225 + (block.rect.width * block.relpos[0]), (block.rect.height * block.relpos[1])))
+						block.set(bottomleft = (self.rect.centerx + block.rect.width * (block.relpos[0] - 7), self.rect.bottom - 20 + block.rect.height * (block.relpos[1] - 21)))
 						block.blit_to(screen)

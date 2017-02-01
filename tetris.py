@@ -6,17 +6,19 @@ except ImportError, error:
 	print "There has been a mistake: ", error
 
 def main ():
+	# Initialize objects.
 	user = User()
 	main_menu = MainMenu(user)
 	play_menu = PlayMenu(user)
 	pause_menu = PauseMenu(user)
-	loss_menu = LossMenu(user)
-	
+	loss_menu = LossMenu(user)	
 	game = Tetris(user, pause_menu, loss_menu)
+	# Some menus need to use game variables.
 	play_menu.game = game
 	pause_menu.game = game
 	loss_menu.game = game
-
+	# Run the program loop. 
+	# User state system allows for flexible changing between menus, but requires relevent menus be loaded at all times.
 	while user.state != 'quit':
 		clock.tick(60)
 		if user.state == 'main_menu':
@@ -29,7 +31,7 @@ def main ():
 			pause_menu.run()
 		elif user.state == 'in_game':
 			game.run()
-
+	# Clean up when the program ends.
 	pygame.quit()
 	sys.exit(1)
 		
