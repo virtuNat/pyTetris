@@ -2,8 +2,6 @@
 
 pygame implementation of a Tetris clone.
 
-# Pre-repository changelog:
-
 PreDev 0.0: 
 - Implemented menu classes.
 - Created basic runtime engine for python games.
@@ -51,7 +49,7 @@ InDev 0.1.4:
 InDev 0.2.0: 
 - Optimized code for Grid class line clear methods, uniting them under a single function.
 
-# Post-repository changelog:
+# Repository starts here:
 
 InDev 0.2.1: 
 - Fixed bug in line clearing that caused block domains to fall "through" each other when they should not.
@@ -105,6 +103,23 @@ Alpha 1.0.0:
 - Implemented Timed mode. Fixed a bug where DAS would cause a piece to be suspended while in contact with another block in this mode.
 - The older mode has been renamed Free mode and can be played for casual Tetris.
 - Removed redundant display code at shapes.py and replaced it with an optimized display function.
-- Updated textures for game.
+- Updated grid texture.
 - Fixed bug where pausing would cause a falling block to not lock.
 - Fixed bug where garbage lines would be subject to cascading gravity.
+
+Alpha 1.1.0:
+Gameplay Balance:
+- Rebalanced score values and score calculation to avoid line clear score errors.
+- Allowed no-kick T-spins to be rewarded with a bonus score multiplier.
+- Rescaled levels in arcade mode to reduce the overall number of lines required to get to maximum level.
+- Garbage lines now spawn periodically at level 128, and will spawn faster at level 256. (Previously, they only spawned at level 256)
+Performance:
+- Wall kick and Arcade difficulty tables have been chopped down.
+- Fixed wall kick table inconsistencies.
+- Arcade difficulty now scales linearly with level up to its maximum.
+- Enabled Left Control to rotate counter-clockwise.
+- Optimized PositionedSurface and Grid code, laying groundwork for performance improvements.
+Features:
+- Game now automatically pauses when the window loses focus.
+- Added a Tetris theme remix to be played in-game.
+- Added a real playing field texture to complement the rudimentary HUD design.
