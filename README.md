@@ -112,11 +112,14 @@ Alpha 1.1.0:
 - Allowed no-kick T-spins to be rewarded with a bonus score multiplier.
 - Rescaled levels in arcade mode to reduce the overall number of lines required to get to maximum level.
 - Garbage lines now spawn periodically at level 128, and will spawn faster at level 256. (Previously, they only spawned at level 256)
-- Wall kick and Arcade difficulty tables have been chopped down.
-- Fixed wall kick table inconsistencies.
+- Wall kick and Arcade difficulty tables have been reworked for readability.
 - Arcade difficulty now scales linearly with level up to its maximum.
 - Enabled Left Control to rotate counter-clockwise.
 - Optimized PositionedSurface and Grid code, laying groundwork for performance improvements.
 - Game now automatically pauses when the window loses focus.
 - Added a Tetris theme remix to be played in-game.
-- Added a real playing field texture to complement the rudimentary HUD design.
+- Added a placeholder playing field texture to complement the rudimentary HUD design.
+
+Alpha 1.1.1:
+- Minor performance improvement with line-clearing, created an explicit Grid.paste_shape() function.
+- Fixed inconsistencies with level assignments in arcade mode.
