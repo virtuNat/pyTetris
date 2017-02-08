@@ -8,28 +8,35 @@ except ImportError, error:
 
 class User (object):
 	"""
-		User object, tracks global game state values, such as
+		The User class tracks global game state values, such as
 		plot flags, difficulty, game internal state, etc.
+
+		In this case, it tracks tetris difficulty values and handles score data.
 	"""
 
 	def __init__ (self):
+		# Global state variables.
 		self.state = 'main_menu'
 		self.gametype = 'free'
-		self.cleartype = 2
+		# Can be changed in the options menu.
+		self.cleartype = 2 # Determines line clear type, refer to Grid.clear_lines(). 
+		self.enablekicks = True # Determines if wall kicks are allowed.
+		self.showghost = True # Determines if the ghost tetrimino will be shown.
+		self.linktiles = True # Determines if the blocks will use connected textures.
 
 		self.debug = True
-
+		# Score data.
 		self.clear_factor = 2. # The multiplier if the entire matrix was cleared by this piece.
 
 		self.drop_score = 1. # The base score added when a block lands.
-		self.dist_factor = 2. # The multiplier for every unit distance dropped by a piece in a soft or hard drop.
+		self.dist_factor = 0.6 # The multiplier for every unit distance dropped by a piece in a soft or hard drop.
 		self.hard_flag = False # True if the piece was hard-dropped.
 
 		self.line_score = 500. # The base score added when a line is cleared.
 		self.line_factor = 0.8 # The added percentage for each line cleared in one drop.
 		self.cascade_factor = 1.5 # The multiplier for each set of lines cleared successively. Exponential.
 
-		self.twist_factor = 2.5 # The multiplier if the starting piece was twisted in.
+		self.twist_factor = 2.4 # The multiplier if the starting piece was twisted in.
 		self.twist_flag = False # True if the tetrimino twisted into place.
 
 		self.tspin_factor = 1.8 # The multiplier if it was a successful T-spin.
@@ -42,6 +49,7 @@ class User (object):
 		self.reset()
 
 	def reset (self):
+		# Reset data when starting a new game.
 		self.score = 0 # Score value for the current game.
 		self.last_score = 0 # Score value for the last clear.
 
@@ -67,25 +75,25 @@ class User (object):
 		if len(lines) > 1 and lines[-1] == 0:
 			lines.pop()
 		temp_score = 0
-		for line in lines:
-			temp_score += (self.line_score * line) * (1 + (self.line_factor * (line - 1)))
+		# In arcade mode, level boosts score earned by successive line clears.
+		_lscore = self.line_score
+		if self.gametype == 'arcade': _lscore += self.level * 2.5
+		# Calculate base score from number of cascades and number of lines cleared per cascade.
+		for line in lines: temp_score += (_lscore * line) * (1 + (self.line_factor * (line - 1)))
 		temp_score *= (self.cascade_factor ** (len(lines) - 1)) * self.current_combo
 		# Increase score for twists.
-		if self.twist_flag:
-			temp_score *= self.twist_factor
+		if self.twist_flag: temp_score *= self.twist_factor
 		# Increase score for T-spins.
-		if self.tspin_flag:
-			temp_score *= self.tspin_factor
+		if self.tspin_flag: temp_score *= self.tspin_factor
 		# Increase score for perfect clears.
-		if clearflag:
-			temp_score *= self.clear_factor
+		if clearflag: temp_score *= self.clear_factor
+		if self.gametype == 'timed': temp_score *= float(30 - (self.timer // 10000)) / 10
 		return int(temp_score)
 
 	def eval_clear_score (self, lines, clearflag):
 		# Add the clear line score.
-		temp_score = self.predict_score(lines, clearflag)
-		self.add_score(temp_score)
-		self.last_score = temp_score
+		self.last_score = self.predict_score(lines, clearflag)
+		self.add_score(self.last_score)
 
 	def eval_level (self):
 		# Evaluate current arcade level.
@@ -110,9 +118,10 @@ class Tetris (object):
 		Grab the highest score!
 	"""
 
-	def __init__ (self, user, pause_menu, loss_menu):
+	def __init__ (self, user, pause_menu, save_menu, loss_menu):
 		self.user = user
 		self.pause_menu = pause_menu
+		self.save_menu = save_menu
 		self.loss_menu = loss_menu
 
 		self.bg = game_bg
@@ -121,7 +130,6 @@ class Tetris (object):
 
 		self.grid = Grid(user)
 		self.grid.game = self
-		self.grid.pause_menu = pause_menu
 		self.set_data()
 
 		print "LEFT and RIGHT arrow keys to shift tetrimino left and right."
@@ -137,8 +145,8 @@ class Tetris (object):
 		self.nextshapes = self.gen_shapelist() # List of next shapes.
 		self.nextshapes.extend(self.gen_shapelist())
 		self.freeshape = self.nextshapes.pop(0) # The actual free tetrimino
-		self.newshape = self.freeshape.copy() # Potential new position from user command
-		self.ghostshape = self.freeshape.copy(ghost = True) # Ghost position for hard drop
+		self.newshape = self.freeshape.copy(self.user.linktiles) # Potential new position from user command
+		self.ghostshape = self.freeshape.copy(self.user.linktiles, True) # Ghost position for hard drop
 		self.storedshape = None # Tetromino currently being held for later use.
 
 		self.paused = False # Alerts the game to pause.
@@ -152,31 +160,27 @@ class Tetris (object):
 			self.fall_delay = 45
 			self.soft_delay = 6
 			self.entry_delay = 30
-
 			self.shift_delay = 25
 			self.shift_fdelay = 4
-			self.line_delay = 300 # Number of frames between garbage line additions at max level.
-			self.line_frame = self.line_delay # Frame counter for the above.
+			self.line_frame = 300 # Frame counter for the number of frames between garbage line additions.
 
 		elif self.user.gametype == 'timed': # Timed mode is faster to induce stress.
 			self.fall_delay = 10
 			self.soft_delay = 1
 			self.entry_delay = 10
-
 			self.shift_delay = 8
 			self.shift_fdelay = 1
 
-			self.user.timer = 5 * 60000 # Remaining time in timed mode.
+			self.user.timer = 5 * 60 * 1000 # Remaining time in timed mode.
 		else: # Free mode stays at a comfortable pace.
 			self.fall_delay = 30 # Number of frames between the ones where the tetrimino falls by one block.
 			self.soft_delay = 2 # ^ during soft drop.
 			self.entry_delay = 20 # Delay between dropping a piece and spawning a new one.
-
 			self.shift_delay = 20 # The frame delay between holding the button and auto-shifting.
 			self.shift_fdelay = 2 # The frame delay between shifts when auto-shifting.
 
-		self.entry_frame = 0 # Frame counter for the above delay.
-		self.entry_flag = True # True if a piece is currently in play, false if the player is waiting for a new one.
+		self.entry_frame = 0 # Frame counter for the entry delay.
+		self.entry_flag = True # True if a piece is currently in play, False if the player is waiting for a new one.
 
 		self.shift_dir = '0' # The current direction the tetrimino is shifting.
 		self.shift_frame = 0 # The frame counter for auto-shifting.
@@ -186,7 +190,9 @@ class Tetris (object):
 
 	def gen_shapelist (self):
 		# Generate a 'bag' of one of each tetrimino shape in random order.
-		return random.sample([Shape(i) for i in range(7)], 7)
+		s_list = [Shape(i, self.user.linktiles) for i in range(7)]
+		random.shuffle(s_list)
+		return s_list
 
 	def set_shape (self, shape):
 		# Set the active shape.
@@ -195,9 +201,9 @@ class Tetris (object):
 		if isinstance(shape, Shape):
 			self.freeshape = shape
 		else:
-			self.freeshape = Shape(shape)
-		self.newshape = self.freeshape.copy()
-		self.ghostshape = self.freeshape.copy(ghost = True)
+			self.freeshape = Shape(shape, self.user.linktiles)
+		self.newshape = self.freeshape.copy(self.user.linktiles)
+		self.ghostshape = self.freeshape.copy(self.user.linktiles, True)
 		self.eval_ghost(False)
 		# Test for obstructions. If they exist, the player lost.
 		self.eval_loss()
@@ -212,27 +218,27 @@ class Tetris (object):
 		# Holds a tetrimino in storage until retrieved.
 		if self.entry_flag:
 			if self.storedshape is None:
-				self.storedshape = Shape(self.newshape.form)
+				self.storedshape = Shape(self.newshape.form, self.user.linktiles)
 				self.next_shape()
 			# If storage already has a tetrimino, swap with current active one.
 			else:
 				# You can only swap once per piece and can't swap if it's the same shape as the active piece.
 				if not self.hold_lock and self.storedshape.form != self.freeshape.form:
 					self.hold_lock = True
-					self.freeshape = Shape(self.storedshape.form)
-					self.storedshape = Shape(self.newshape.form)
-					self.newshape = self.freeshape.copy()
+					self.freeshape = Shape(self.storedshape.form, self.user.linktiles)
+					self.storedshape = Shape(self.newshape.form, self.user.linktiles)
+					self.newshape = self.freeshape.copy(self.user.linktiles)
 		else:
 			# Allow pieces to be swapped during spawn delay.
 			if self.storedshape is None:
-				self.storedshape = Shape(self.nextshapes[0].form)
+				self.storedshape = Shape(self.nextshapes[0].form, self.user.linktiles)
 				self.nextshapes.pop(0)
 				if len(self.nextshapes) < 7:
 					self.nextshapes.extend(self.gen_shapelist())
 			else:
 				holdform = self.storedshape.form
-				self.storedshape = Shape(self.nextshapes[0].form)
-				self.nextshapes[0] = Shape(holdform)
+				self.storedshape = Shape(self.nextshapes[0].form, self.user.linktiles)
+				self.nextshapes[0] = Shape(holdform, self.user.linktiles)
 
 	def eval_input (self):
 		# Evaluates player input.
@@ -262,15 +268,14 @@ class Tetris (object):
 
 			elif self.entry_flag:
 				if event.key == pygame.K_z or event.key == pygame.K_LCTRL: # Rotate CCW
-					self.newshape.rotate(-90)
+					self.newshape.rotate(-90, self.user.linktiles)
 					self.wall_kick()
 				elif event.key == pygame.K_x or event.key == pygame.K_UP: # Rotate CW
-					self.newshape.rotate(90)
+					self.newshape.rotate(90, self.user.linktiles)
 					self.wall_kick()
 				
 				elif event.key == pygame.K_SPACE: # Hard drop
 					self.user.hard_flag = True
-					self.ghostshape.copy_to(self.freeshape)
 					self.eval_fallen(self.ghostshape.pos[1] - self.freeshape.pos[1])
 				
 			if self.user.debug:
@@ -319,14 +324,14 @@ class Tetris (object):
 			# Prevent active tetrimino from sliding into gridblocks.
 			for block in self.newshape.blocks:
 				if self.collision_test(block, self.newshape):
-					self.freeshape.copy_to(self.newshape)
+					self.freeshape.copy_to(self.newshape, self.user.linktiles)
 					break
 			else:
-				self.newshape.copy_to(self.freeshape)
+				self.newshape.copy_to(self.freeshape, self.user.linktiles)
 
 	def eval_ghost (self, show = True):
 		# Evaluate and display the position of the ghost tetrimino.
-		self.freeshape.copy_to(self.ghostshape, ghost = True)
+		self.freeshape.copy_to(self.ghostshape, self.user.linktiles, True)
 		ghost_collide = False
 		while not ghost_collide:
 			self.ghostshape.translate((0, 1))
@@ -335,7 +340,7 @@ class Tetris (object):
 					ghost_collide = True
 					break
 		self.ghostshape.translate((0, -1))
-		if show: self.ghostshape.display()
+		if show and self.user.showghost: self.ghostshape.display()
 
 	def eval_tspin (self):
 		# If a twist hasn't occured after a successful rotation,
@@ -356,7 +361,7 @@ class Tetris (object):
 		# Test four kick positions.
 		for pos in poslist:
 			# Test if a given relative position will cause a collision.
-			if self.collision and ((pos[1] < 0 and self.floor_kick) or pos[1] >= 0):
+			if self.collision and (pos[1] >= 0 or (pos[1] < 0 and self.floor_kick)):
 				# Disable the floor kick flag if the position would make the piece go up.
 				if pos[1] < 0: self.floor_kick = False
 				# Set the test position to the original position before translating.
@@ -383,59 +388,60 @@ class Tetris (object):
 				if self.collision_test(block, self.newshape):
 					self.collision = True
 					break
-			if self.collision:
-				self.user.twist_flag = True
-				# If collision occurs on basic rotation, test 4 kick positions.
-				if self.freeshape.state == 0:
-					if self.newshape.state == 3: # Rotation from spawn to CCW
-						if self.newshape.form > 1: # J, L, S, T, Z
-							self.test_kicks([( 1, 0), ( 1,-1), ( 0, 2), ( 1, 2)])
-						else: # I
-							self.test_kicks([( 2, 0), (-1, 0), (-1,-2), ( 2, 1)])
-					elif self.newshape.state == 1: # Rotation from spawn to CW
-						if self.newshape.form > 1: # J, L, S, T, Z
-							self.test_kicks([(-1, 0), (-1,-1), ( 0, 2), (-1, 2)])
-						else: # I
-							self.test_kicks([(-2, 0), ( 1, 0), ( 1,-2), (-2, 1)])
-				elif self.freeshape.state == 1:
-					if self.newshape.state == 0: # Rotation from CW to spawn
-						if self.newshape.form > 1: # J, L, S, T, Z
-							self.test_kicks([( 1, 0), ( 1, 1), ( 0,-2), ( 1,-2)])
-						else: # I
-							self.test_kicks([( 2, 0), (-1, 0), ( 2,-1), (-1, 2)])
-					elif self.newshape.state == 2: # Rotation from CW to 180
-						if self.newshape.form > 1: # J, L, S, T, Z
-							self.test_kicks([( 1, 0), ( 1, 1), ( 0,-2), ( 1,-2)])
-						else: # I
-							self.test_kicks([(-1, 0), ( 2, 0), (-1,-2), ( 2, 1)])
-				elif self.freeshape.state == 2:
-					if self.newshape.state == 1: # Rotation from 180 to CW
-						if self.newshape.form > 1: # J, L, S, T, Z
-							self.test_kicks([(-1, 0), (-1,-1), ( 0, 2), (-1, 2)])
-						else: # I
-							self.test_kicks([(-2, 0), ( 1, 0), (-2,-1), ( 1, 1)])
-					elif self.newshape.state == 3: # Rotation from 180 to CCW
-						if self.newshape.form > 1: # J, L, S, T, Z
-							self.test_kicks([( 1, 0), ( 1,-1), ( 0, 2), ( 1, 2)])
-						else: # I
-							self.test_kicks([( 2, 0), (-1, 0), ( 2,-1), (-1, 1)])
-				elif self.freeshape.state == 3:
-					if self.newshape.state == 2: # Rotation from CCW to 180
-						if self.newshape.form > 1: # J, L, S, T, Z
-							self.test_kicks([(-1, 0), (-1, 1), ( 0,-2), (-1,-2)])
-						else: # I
-							self.test_kicks([( 1, 0), (-2, 0), ( 1,-2), (-2, 1)])
-					elif self.newshape.state == 0: # Rotation from CCW to spawn
-						if self.newshape.form > 1: # J, L, S, T, Z
-							self.test_kicks([(-1, 0), (-1, 1), ( 0,-2), (-1,-2)])
-						else: # I
-							self.test_kicks([(-2, 0), ( 1, 0), (-2,-1), ( 1, 2)])
-			else: self.user.twist_flag = False
-			if self.user.twist_flag: self.grav_frame = 1
+			if self.user.enablekicks:
+				if self.collision:
+					self.user.twist_flag = True
+					# If collision occurs on basic rotation, test 4 kick positions.
+					if self.freeshape.state == 0:
+						if self.newshape.state == 3: # Rotation from spawn to CCW
+							if self.newshape.form > 1: # J, L, S, T, Z
+								self.test_kicks([( 1, 0), ( 1,-1), ( 0, 2), ( 1, 2)])
+							else: # I
+								self.test_kicks([( 2, 0), (-1, 0), (-1,-2), ( 2, 1)])
+						elif self.newshape.state == 1: # Rotation from spawn to CW
+							if self.newshape.form > 1: # J, L, S, T, Z
+								self.test_kicks([(-1, 0), (-1,-1), ( 0, 2), (-1, 2)])
+							else: # I
+								self.test_kicks([(-2, 0), ( 1, 0), ( 1,-2), (-2, 1)])
+					elif self.freeshape.state == 1:
+						if self.newshape.state == 0: # Rotation from CW to spawn
+							if self.newshape.form > 1: # J, L, S, T, Z
+								self.test_kicks([( 1, 0), ( 1, 1), ( 0,-2), ( 1,-2)])
+							else: # I
+								self.test_kicks([( 2, 0), (-1, 0), ( 2,-1), (-1, 2)])
+						elif self.newshape.state == 2: # Rotation from CW to 180
+							if self.newshape.form > 1: # J, L, S, T, Z
+								self.test_kicks([( 1, 0), ( 1, 1), ( 0,-2), ( 1,-2)])
+							else: # I
+								self.test_kicks([(-1, 0), ( 2, 0), (-1,-2), ( 2, 1)])
+					elif self.freeshape.state == 2:
+						if self.newshape.state == 1: # Rotation from 180 to CW
+							if self.newshape.form > 1: # J, L, S, T, Z
+								self.test_kicks([(-1, 0), (-1,-1), ( 0, 2), (-1, 2)])
+							else: # I
+								self.test_kicks([(-2, 0), ( 1, 0), (-2,-1), ( 1, 1)])
+						elif self.newshape.state == 3: # Rotation from 180 to CCW
+							if self.newshape.form > 1: # J, L, S, T, Z
+								self.test_kicks([( 1, 0), ( 1,-1), ( 0, 2), ( 1, 2)])
+							else: # I
+								self.test_kicks([( 2, 0), (-1, 0), ( 2,-1), (-1, 1)])
+					elif self.freeshape.state == 3:
+						if self.newshape.state == 2: # Rotation from CCW to 180
+							if self.newshape.form > 1: # J, L, S, T, Z
+								self.test_kicks([(-1, 0), (-1, 1), ( 0,-2), (-1,-2)])
+							else: # I
+								self.test_kicks([( 1, 0), (-2, 0), ( 1,-2), (-2, 1)])
+						elif self.newshape.state == 0: # Rotation from CCW to spawn
+							if self.newshape.form > 1: # J, L, S, T, Z
+								self.test_kicks([(-1, 0), (-1, 1), ( 0,-2), (-1,-2)])
+							else: # I
+								self.test_kicks([(-2, 0), ( 1, 0), (-2,-1), ( 1, 2)])
+				else: self.user.twist_flag = False
+				if self.user.twist_flag: self.grav_frame = 1
 
-			if self.collision: self.freeshape.copy_to(self.newshape)
+			if self.collision: self.freeshape.copy_to(self.newshape, self.user.linktiles)
 			else: 
-				self.newshape.copy_to(self.freeshape)
+				self.newshape.copy_to(self.freeshape, self.user.linktiles)
 				self.eval_tspin()
 
 	def eval_gravity (self):
@@ -451,7 +457,7 @@ class Tetris (object):
 
 	def eval_fallen (self, posdif):
 		# Evaluates what happens to a tetrimino when it has just fallen.
-
+		if self.user.hard_flag: self.ghostshape.copy_to(self.freeshape, self.user.linktiles)
 		# Reset DAS if the user has not let go of the key yet.
 		if self.shift_frame == 0 and self.shift_dir != '0':
 			self.shift_frame = self.shift_delay
@@ -467,9 +473,9 @@ class Tetris (object):
 		self.entry_flag = False
 		self.entry_frame = self.entry_delay
 		# Unset active piece.
-		self.freeshape = Shape(7)
-		self.newshape = Shape(7)
-		self.ghostshape = Shape(7)
+		self.freeshape = Shape()
+		self.newshape = Shape()
+		self.ghostshape = Shape()
 		# Prevent a bug where losing would force pieces to spawn.
 		self.grav_frame = 0
 		if self.user.state == 'loser':
@@ -505,14 +511,14 @@ class Tetris (object):
 			else: trapped = False
 			if trapped:
 				# Can it move down?
-				self.newshape.translate((0, 1))
+				self.newshape.translate(( 0, 1))
 				for block in self.newshape.blocks:
 					if self.collision_test(block, self.newshape):
 						break
 				else: trapped = False
 			if trapped:
 				# Can it move right?
-				self.newshape.translate((1, -1))
+				self.newshape.translate(( 1,-1))
 				for block in self.newshape.blocks:
 					if self.collision_test(block, self.newshape):
 						break
@@ -526,37 +532,39 @@ class Tetris (object):
 				else: trapped = False
 			# If the shape is blocked and can't clear a line, game over.
 			if trapped: self.user.state = 'loser'
-			self.freeshape.copy_to(self.newshape)
+			self.freeshape.copy_to(self.newshape, self.user.linktiles)
 		else:
 			self.user.state = 'loser'
 
 	def ramp_arcade (self, oldlevel):
+		# Manages the difficulty of arcade mode.
+
 		# Increase the level based on the number of lines cleared, and check if there's a difference.
 		self.user.eval_level()
-		# Responsible for making the Arcade mode more difficult over time.
+		# Responsible for making the Arcade mode more faster-paced over time.
 		if oldlevel < self.user.level:
 			# Add garbage on a level up.
 			for i in range((self.user.level + 1) // 25): self.grid.add_garbage()
 			# Increase game speed based on level.
-			self.fall_delay = 45 - (37 * self.user.level // 120) if self.user.level < 120 else 8
-			self.soft_delay = 6 - (6 * self.user.level // 60) if self.user.level < 60 else 0
-			self.entry_delay = 30 - (25 * self.user.level // 100) if self.user.level < 100 else 5
-			self.shift_delay = 25 - (21 * self.user.level // 100) if self.user.level < 100 else 4
+			self.fall_delay = 45 - (40 * self.user.level // 180) if self.user.level < 180 else 5
+			self.soft_delay = 6 - (6 * self.user.level // 90) if self.user.level < 90 else 0
+			self.entry_delay = 30 - (20 * self.user.level // 150) if self.user.level < 150 else 10
+			self.shift_delay = 25 - (17 * self.user.level // 120) if self.user.level < 120 else 8
 			self.shift_fdelay = 4 - (3 * self.user.level // 60) if self.user.level < 60 else 1
 
 		# At half level, periodically spawn garbage lines.
-		if self.user.level >= 128:
+		if self.user.level >= 64:
 			if self.line_frame == 0:
 				self.grid.add_garbage()
+				# Make sure that the piece doesn't go IN the matrix when a garbage line pops up.
+				for block in self.freeshape.blocks:
+					if self.collision_test(block, self.freeshape): self.freeshape.translate(( 0,-1))
 				# At max level, make them spawn faster.
-				if self.user.level == 256:
-					self.line_frame = self.line_delay * 0.6
-				elif self.user.level >= 192:
-					self.line_frame = self.line_delay * 0.8
-				else:
-					self.line_frame = self.line_delay
-			else:
-				self.line_frame -= 1
+				if self.user.level >= 256: self.line_frame = 120
+				elif self.user.level >= 192: self.line_frame = 180
+				elif self.user.level >= 128: self.line_frame = 240
+				elif self.user.levl >= 64: self.line_frame = 300
+			else: self.line_frame -= 1
 
 	def render_text (self, text, color, **pos):
 		# Render a message to the screen.
@@ -570,13 +578,13 @@ class Tetris (object):
 		talign = self.grid.rect.top + 177
 		spacing = 30
 		# Display current game mode.
-		self.render_text(self.user.gametype.capitalize() + ' Mode', (255, 255, 255), midtop = (screen.get_rect().centerx, self.grid.rect.top + 15))
+		self.render_text(self.user.gametype.capitalize() + ' Mode', (255, 255, 255), midtop = (s_rect.centerx, self.grid.rect.top + 15))
 		# Display current score.
 		self.render_text('Score:', (255, 255, 255), topleft = (lalign, talign))
-		self.render_text('{:012d}'.format(self.user.score), (255, 255, 255), topright = (ralign, talign + spacing))
+		self.render_text('{}'.format(self.user.score), (255, 255, 255), topright = (ralign, talign + spacing))
 		# Display score from last clear.
 		self.render_text('Last Clear:', (255, 255, 255), topleft = (lalign, talign + spacing * 2))
-		self.render_text('{:012d}'.format(self.user.last_score), (255, 255, 255), topright = (ralign, talign + spacing * 3))
+		self.render_text('{}'.format(self.user.last_score), (255, 255, 255), topright = (ralign, talign + spacing * 3))
 		# Display total tiles cleared.
 		self.render_text('Lines Cleared:', (255, 255, 255), topleft = (lalign, talign + spacing * 4))
 		self.render_text('{}'.format(self.user.lines_cleared), (255, 255, 255), topright = (ralign, talign + spacing * 5))
@@ -589,8 +597,7 @@ class Tetris (object):
 			self.render_text('{}:{:02d}:{:02d}'.format(self.user.timer // 60000, self.user.timer // 1000 % 60, self.user.timer % 1000 // 10), (255, 255, 255), topright = (ralign, talign + spacing * 7))
 		
 		# Display active piece.
-		if self.entry_flag and not clearing:
-			self.freeshape.display()
+		if self.entry_flag and not clearing: self.freeshape.display()
 		# Display three next pieces.
 		self.render_text('Up Next:', (255, 255, 255), topleft = (584, self.grid.rect.top + 60))
 		for i in range(3):
@@ -601,8 +608,13 @@ class Tetris (object):
 			self.storedshape.display((8, self.grid.rect.top + 101), True)
 
 	def run (self):
-		# Runs the game.
+		# Runs the game loop.
 
+		# Evaluate arcade mode difficulty before any calculations with the active piece are done to avoid bugs.
+		if self.user.gametype == 'arcade':
+			# Evaluate current arcade level.
+			self.ramp_arcade(self.user.level)
+		
 		# Display the background.
 		screen.blit(self.bg, (0, 0))
 		# Display and manage the grid.
@@ -612,7 +624,7 @@ class Tetris (object):
 		self.eval_input()
 		# Evaluate translation.
 		self.eval_shift()
-
+		# If the spawn delay isn't active:
 		if self.entry_flag:
 			# Evaluate ghost tetrimino and display it.
 			self.eval_ghost()
@@ -632,17 +644,15 @@ class Tetris (object):
 				else: # Move shape down.
 					self.grav_frame = 0
 					self.newshape.translate((0, 1))
+		# If it is, count down the number of frames until it's time to deactivate it.
 		elif self.entry_frame > 0:
 			self.entry_frame -= 1
 		else:
 			self.entry_flag = True
 			self.next_shape()
 
-		if self.user.gametype == 'arcade':
-			# Evaluate current arcade level.
-			self.ramp_arcade(self.user.level)
-			self.user.timer += clock.get_time()
-		elif self.user.gametype == 'timed':
+		# Evaluate timer at the end of the frame.
+		if self.user.gametype == 'timed':
 			# Evaluate the timer in timed mode.
 			if self.user.timer > 0:
 				self.user.timer -= clock.get_time()
@@ -650,15 +660,32 @@ class Tetris (object):
 				self.user.timer = 0
 				self.user.state = 'loser'
 		else:
-			# Increment timer for non-timed modes so it could be added to the high score.
+			# Increment timer for non-timed modes so it could be appended to the high score.
 			self.user.timer += clock.get_time()
 		# Display heads-up information.
 		self.display()
 
 		if self.user.state == 'loser':
+			if self.user.gametype == 'arcade': g = 0
+			elif self.user.gametype == 'timed': g = 1
+			elif self.user.gametype == 'free': g = 2
+
+			_scorelist = decode_scores()[g]
+			_i = 10
+			for i in range(9, -1, -1):
+				if _scorelist[i][1] < self.user.score:
+					_i = i
+				elif _scorelist[i][1] == self.user.score and _scorelist[i][2] >= self.user.lines_cleared:
+					_i = i
+					if _scorelist[i][2] == self.user.lines_cleared and _scorelist[i][3] >= self.user.timer:
+						_i = i
+			if _i < 10:
+				self.save_menu.render_place(_i)
+				self.user.state = 'save_scores'
+
 			self.loss_menu.render_loss()
 			self.loss_menu.set_bg(screen)
-			pygame.mixer.music.fadeout(1000)
+			pygame.mixer.music.fadeout(2500)
 		# Pause game after evaluating frame.
 		if self.paused:
 			self.soft_drop = False

@@ -1,16 +1,21 @@
 # My personal environment upon which I base my pygame projects. Small changes will exist here from game to game, but it will all mostly look like this.
+# The way I code things is for optimized reusability. So while it may not be the shortest or most code-efficient way of creating a game, 
+# I try to make it such that I could easily plug and edit blocks of code into similar applications.
+# Also it's good for convenience's sake that I don't have to think so hard about what the hell I did when I wrote the older stuff.
 # [ ] square bracket copy reference, { } curly braces reference
 try:
 	import os, sys
 	import math, random
 	import pygame, pygame.mixer
-	# import pygame._view; # For some reason, this doesn't fucking work.
+	import struct
+	import hashlib
 except ImportError, error:
 	print "Something screwey happened:", error
 
 pygame.init()
 pygame.mixer.init(buffer = 1024)
 screen = pygame.display.set_mode((800, 600), pygame.HWSURFACE | pygame.DOUBLEBUF)
+s_rect = screen.get_rect()
 pygame.display.set_caption('pyTetris')
 clock = pygame.time.Clock()
 
@@ -59,9 +64,11 @@ def load_image (name, alpha = None, colorkey = None):
 	return image
 
 def load_music(name):
+	# Loads a music file into the stream.
 	return pygame.mixer.music.load(os.path.join('music', name))
 
 def restart_music():
+	# Restarts the current music in the stream in one statement.
 	pygame.mixer.music.rewind()
 	pygame.mixer.music.play()
 
@@ -94,13 +101,13 @@ class PositionedSurface (object):
 		self.pos = self.pos[0] + x, self.pos[1] + y
 		self.set(center = self.pos)
 
-	def move_to (self, dest, speed):
+	def move_to (self, dest, speed, **anchor):
 		# Moves pos attribute towards a target point at a certain speed.
-		# Remember to re-anchor the rectangle after calling this method. e.g. self.rect.center = self.pos
 		if hyp_area(self.pos, dest) > speed ** 2:
 			self.pos = self.pos[0] + speed * get_cos(self.pos, dest), self.pos[1] + speed * get_sin(self.pos, dest)
 		else:
 			self.pos = dest
+		self.set(**anchor)
 
 	def blit_to (self, image):
 		# So I just have to handle it via the self.cliprect attribute rather than some other bullshit.
@@ -161,20 +168,20 @@ class Menu (AnimatedSprite):
 		such as moving along selections, positioning, and committing.
 	"""
 
-	def __init__ (self, user, bg = None, rect = None):
+	def __init__ (self, user, bg = None, rect = None, **pos):
 		if bg is None:
 			bg = pygame.Surface((50, 50))
 			bg.fill((255, 0, 0))
 		if rect is None:
 			rect = bg.get_rect()
-		super(Menu, self).__init__(bg, rect)
+		super(Menu, self).__init__(bg, rect, **pos)
 
 		self.user = user
 		self.font = pygame.font.SysFont(None, 25)
 		# Coordinates of currently selected selection.
 		self.selection = [0, 0]
 		# All menus will have their own selections set, effectively a 2d array, with the range length set at every instance.
-		self.selections = [[MenuSelection(self, 'Null', 'Null', (0, 0), (1, 1))]]
+		self.selections = [[MenuSelection(self, 'Null', ' ', self.rect.topleft, (20, 20))]]
 		self.set_range()
 		# Selection movement.
 		self.up = False
@@ -190,6 +197,7 @@ class Menu (AnimatedSprite):
 
 	def set_range (self):
 		# Initializes the range value of the menu selections. Safe to call more than once on one initialization.
+		# Note that the menu selections are assumed to be rectangular in nature.
 		self.range = [len(self.selections), len(self.selections[0])]
 
 	def reset (self):

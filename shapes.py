@@ -12,18 +12,18 @@ game_bg.fill((0, 0, 0))
 class Block (AnimatedSprite):
 	"""
 		Blocks are the individual pieces shapes are made of, 
-		with always four blocks in one standard tetromino.
+		with always four blocks in one standard tetrimino.
 
 		The block object supports copying of its data to other blocks,
 		and primarily acts to store block texture and relative position 
 		data.
 	"""
 
-	def __init__(self, relpos, color, links = [ ], ghost = False, fallen = False):
+	def __init__(self, relpos, color, links = [ ], linkrule = True, ghost = False, fallen = False):
 		self.color = color # Block color.
 		self.ghost = ghost # Ghost state.
 		self.links = links # Which direction a block is linked to. 0, 1, 2, 3, for L, U, R, D respectively.
-		self.set_graphic(color, ghost)
+		self.set_graphic(color, linkrule, ghost)
 		super(Block, self).__init__(self.image)
 		self.relpos = relpos
 		self.fallen = fallen
@@ -31,47 +31,38 @@ class Block (AnimatedSprite):
 	def __repr__ (self):
 		return "Tetris Block at" + str(self.relpos)
 
-	def set_graphic (self, color, ghost = False):
+	def set_graphic (self, color, linkrule = True, ghost = False):
 		# Determines block graphic based on its links. Refer to tileset.png in the textures folder.
 		color = (color * 50) + (25 * int(ghost))
 		linknum = len(self.links)
-		if linknum == 0:
-			form = 0
-		elif linknum == 1:
-			form = self.links[0] + 1
-		elif linknum == 2:
-			if 0 in self.links:
-				if 1 in self.links:
-					form = 5
-				elif 2 in self.links:
-					form = 6
-				elif 3 in self.links:
-					form = 10
-			elif 1 in self.links:
-				if 2 in self.links:
-					form = 7
-				else:
-					form = 8
-			else:
-				form = 9
-		elif linknum == 3:
-			if 0 in self.links:
-				if 1 in self.links:
-					if 2 in self.links:
-						form = 11
-					else:
-						form = 14
-				else:
-					form = 13
-			else:
-				form = 12
+		if linkrule:
+			if linknum == 0: form = 0
+			elif linknum == 1: form = self.links[0] + 1
+			elif linknum == 2:
+				if 0 in self.links:
+					if 1 in self.links: form = 5
+					elif 2 in self.links: form = 6
+					elif 3 in self.links: form = 10
+				elif 1 in self.links:
+					if 2 in self.links: form = 7
+					else: form = 8
+				else: form = 9
+			elif linknum == 3:
+				if 0 in self.links:
+					if 1 in self.links:
+						if 2 in self.links: form = 11
+						else: form = 14
+					else: form = 13
+				else: form = 12
+			else: raise IndexError('Having more than three links on a block does not a tetrimino make.')
+		else: form = 0
 		self.image = block_source.subsurface(pygame.Rect(color, form * 25, 25, 25))
-		if self.ghost: self.image.set_alpha(191)
+		if ghost: self.image.set_alpha(191)
 
-	def copy (self, block = None, ghost = False):
+	def copy (self, block = None, linkrule = True, ghost = False):
 		# Copy block state onto another block. If block to be copied to is empty, create new Block object.
 		if block is None:
-			newblock = Block(self.relpos, self.color, self.links, ghost)
+			newblock = Block(self.relpos, self.color, self.links, linkrule, ghost)
 			return newblock
 		else:
 			block.color = self.color
@@ -90,25 +81,25 @@ class Shape (object):
 		represents the bottomleft corner.
 	"""
 
-	def __init__(self, form = 0):
+	def __init__(self, form = 7, linkrule = True):
 		self.pos = [6, 1] # Center of rotation.
 		self.form = form # Tetrimino shape.
 		self.state = 0 # Current rotation relative to spawn rotation.
 
 		if form == 0: # I
-			self.blocks = [Block([-1, 0], form, [2]), Block([0, 0], form, [0, 2]), Block([1, 0], form, [0, 2]), Block([2, 0], form, [0])]
+			self.blocks = [Block([-1, 0], form, [2], linkrule), Block([0, 0], form, [0, 2], linkrule), Block([1, 0], form, [0, 2], linkrule), Block([2, 0], form, [0], linkrule)]
 		elif form == 1: # O
-			self.blocks = [Block([0, -1], form, [2, 3]), Block([1, -1], form, [3, 0]), Block([1, 0], form, [0, 1]), Block([0, 0], form, [1, 2])]
+			self.blocks = [Block([0, -1], form, [2, 3], linkrule), Block([1, -1], form, [3, 0], linkrule), Block([1, 0], form, [0, 1], linkrule), Block([0, 0], form, [1, 2], linkrule)]
 		elif form == 2: # T
-			self.blocks = [Block([-1, 0], form, [2]), Block([0, -1], form, [3]), Block([1, 0], form, [0]), Block([0, 0], form, [0, 1, 2])]
+			self.blocks = [Block([-1, 0], form, [2], linkrule), Block([0, -1], form, [3], linkrule), Block([1, 0], form, [0], linkrule), Block([0, 0], form, [0, 1, 2], linkrule)]
 		elif form == 3: # S
-			self.blocks = [Block([-1, 0], form, [2]), Block([0, 0], form, [0, 1]), Block([0, -1], form, [2, 3]), Block([1, -1], form, [0])]
+			self.blocks = [Block([-1, 0], form, [2], linkrule), Block([0, 0], form, [0, 1], linkrule), Block([0, -1], form, [2, 3], linkrule), Block([1, -1], form, [0], linkrule)]
 		elif form == 4: # Z
-			self.blocks = [Block([-1, -1], form, [2]), Block([0, -1], form, [0, 3]), Block([0, 0], form, [2, 1]), Block([1, 0], form, [0])]
+			self.blocks = [Block([-1, -1], form, [2], linkrule), Block([0, -1], form, [0, 3], linkrule), Block([0, 0], form, [2, 1], linkrule), Block([1, 0], form, [0], linkrule)]
 		elif form == 5: # J
-			self.blocks = [Block([-1, -1], form, [3]), Block([-1, 0], form, [1, 2]), Block([0, 0], form, [0, 2]), Block([1, 0], form, [0])]
+			self.blocks = [Block([-1, -1], form, [3], linkrule), Block([-1, 0], form, [1, 2], linkrule), Block([0, 0], form, [0, 2], linkrule), Block([1, 0], form, [0], linkrule)]
 		elif form == 6: # L
-			self.blocks = [Block([-1, 0], form, [2]), Block([0, 0], form, [0, 2]), Block([1, 0], form, [0, 1]), Block([1, -1], form, [3])]
+			self.blocks = [Block([-1, 0], form, [2], linkrule), Block([0, 0], form, [0, 2], linkrule), Block([1, 0], form, [0, 1], linkrule), Block([1, -1], form, [3], linkrule)]
 		elif form == 7: # Blank
 			self.blocks = [ ]
 
@@ -135,26 +126,27 @@ class Shape (object):
 			shapetext = 'Temporary Aggregate'
 		return shapetext + " Tetromino with blocks at: " + str(self.blocks)
 
-	def copy (self, ghost = False):
+	def copy (self, linkrule = True, ghost = False):
 		# Copy this shape, creating a new Shape object in the process.
-		newshape = Shape(self.form)
+		newshape = Shape()
 		newshape.pos = self.pos
+		newshape.form = self.form
 		newshape.state = self.state
 		newshape.blocks = [ ] 
 		for i in range(len(self.blocks)):
-			newshape.blocks.append(self.blocks[i].copy(ghost = ghost))
-			newshape.blocks[i].set_graphic(self.blocks[i].color, ghost)
+			newshape.blocks.append(self.blocks[i].copy(None, linkrule, ghost))
+			newshape.blocks[i].set_graphic(self.blocks[i].color, linkrule, ghost)
 		return newshape
 
-	def copy_to (self, dest, ghost = False):
+	def copy_to (self, dest, linkrule = True, ghost = False):
 		# Copy this shape to another shape without creating a new Shape object.
 		dest.pos = self.pos
 		dest.state = self.state
 		for i in range(len(self.blocks)):
-			self.blocks[i].copy(dest.blocks[i], ghost)
-			dest.blocks[i].set_graphic(self.blocks[i].color, ghost)
+			self.blocks[i].copy(dest.blocks[i], linkrule, ghost)
+			dest.blocks[i].set_graphic(self.blocks[i].color, linkrule, ghost)
 
-	def rotate (self, angle):
+	def rotate (self, angle, linkrule = True):
 		# SRS implementation of Tetromino rotation. It is done relative to shape.pos unless it's an I.
 
 		# Shape.state tracks current rotation for the wall kick implementation.
@@ -185,7 +177,7 @@ class Shape (object):
 					block.links = [block.links[i] + 2 if block.links[i] < 2 else block.links[i] - 2 for i in range(len(block.links))]
 				else: # Just in case the programmer (me) is stupid.
 					raise ValueError('Tetriminos can only rotate in increments of 90 degrees.')
-				block.set_graphic(block.color, block.ghost)
+				block.set_graphic(block.color, linkrule, block.ghost)
 				block.relpos = [tmp[i] if self.form > 1 else int(tmp[i] + 0.5) for i in range(2)]
 
 	def translate (self, dpos = (0, 0)):
@@ -204,7 +196,7 @@ class Shape (object):
 			if self.pos[1] + block.relpos[1] > 1 or forced:
 				block.blit_to(screen)
 
-class Grid (PositionedSurface):
+class Grid (AnimatedSprite):
 	"""
 		The Matrix upon which the game is played. When shapes fall and can no longer be moved, 
 		their blocks are stored here. Fallen block colors and links are kept.
@@ -216,18 +208,18 @@ class Grid (PositionedSurface):
 	"""
 
 	def __init__(self, user):
-		super(Grid, self).__init__(grid_source, midbottom = (screen.get_rect().centerx, 580))
+		super(Grid, self).__init__(grid_source, midbottom = (s_rect.centerx, 580))
 		self.user = user
 		self.set_cells()
 
 	def set_cells (self):
 		# Sets the Matrix to have nothing but its invisible blocks.
-		self.cells = [[Block([i, j], 0, fallen = True) if i < 2 or i > 11 or j > 21 else None for i in range(14)] for j in range(24)]
+		self.cells = [[Block([i, j], 0, fallen = True) if i < 2 or i > 11 or j > 21 else None for i in range(15)] for j in range(24)]
 
 	def add_garbage (self):
 		# Adds a garbage row.
 		hole = random.randint(2, 11)
-		garbage = [Block([i, 22], 0, fallen = True) if i < 2 or i > 11 else None if i == hole else Block([i, 22], 7, fallen = True) for i in range(14)]
+		garbage = [Block([i, 22], 0, fallen = True) if i < 2 or i > 11 else None if i == hole else Block([i, 22], 7, fallen = True) for i in range(15)]
 		# Prevent the garbage blocks from clearing themselves.
 		for i in range(2, 12):
 			links = [ ]
@@ -237,7 +229,7 @@ class Grid (PositionedSurface):
 				if i != 11 and i != hole - 1:
 					links.append(2)
 				garbage[i].links = links
-				garbage[i].set_graphic(7)
+				garbage[i].set_graphic(7, self.user.linktiles)
 
 		self.cells.insert(22, garbage)
 		self.cells.pop(0)
@@ -248,41 +240,41 @@ class Grid (PositionedSurface):
 		for i in range(len(shape.blocks)):
 			self.cells[shape.poslist[i][1]][shape.poslist[i][0]] = shape.blocks[i]
 
-	def flood_fill (self, block_list, index):
+	def flood_fill (self, block_list, index, linkrule):
 		# Recursive blind flood fill function.
 		if self.cells[index[0]][index[1]] is not None and index[0] < 22 and index[1] > 1 and index[1] < 12:
 			# Cut block from grid to temporary shape.
-			block_list.append(Block([index[1] - 6, index[0] - 1], self.cells[index[0]][index[1]].color, self.cells[index[0]][index[1]].links))
+			block_list.append(Block([index[1] - 6, index[0] - 1], self.cells[index[0]][index[1]].color, self.cells[index[0]][index[1]].links, linkrule))
 			self.cells[index[0]][index[1]] = None
 			# Look at every nearby cell and perform again if valid.
-			self.flood_fill(block_list, (index[0], index[1] - 1)) # Left
-			self.flood_fill(block_list, (index[0] - 1, index[1])) # Up
-			self.flood_fill(block_list, (index[0], index[1] + 1)) # Right
-			self.flood_fill(block_list, (index[0] + 1, index[1])) # Down
+			self.flood_fill(block_list, (index[0], index[1] - 1), linkrule) # Left
+			self.flood_fill(block_list, (index[0] - 1, index[1]), linkrule) # Up
+			self.flood_fill(block_list, (index[0], index[1] + 1), linkrule) # Right
+			self.flood_fill(block_list, (index[0] + 1, index[1]), linkrule) # Down
 
-	def link_fill (self, block_list, index):
+	def link_fill (self, block_list, index, linkrule):
 		# Recursive flood fill function using the links.
 		if self.cells[index[0]][index[1]] is not None and index[0] < 22 and index[1] > 1 and index[1] < 12:
 			# Cut block from grid to temporary shape.
-			block_list.append(Block([index[1] - 6, index[0] - 1], self.cells[index[0]][index[1]].color, self.cells[index[0]][index[1]].links))
+			block_list.append(Block([index[1] - 6, index[0] - 1], self.cells[index[0]][index[1]].color, self.cells[index[0]][index[1]].links, linkrule))
 			# Save links to temporary variable before deleting the block.
 			oldlinks = self.cells[index[0]][index[1]].links
 			self.cells[index[0]][index[1]] = None
 			# Check adjacent blocks as indicated by the links.
 			if 0 in oldlinks: # Left
-				self.link_fill(block_list, [index[0], index[1] - 1])
+				self.link_fill(block_list, [index[0], index[1] - 1], linkrule)
 			if 1 in oldlinks: # Up
-				self.link_fill(block_list, [index[0] - 1, index[1]])
+				self.link_fill(block_list, [index[0] - 1, index[1]], linkrule)
 			if 2 in oldlinks: # Right
-				self.link_fill(block_list, [index[0], index[1] + 1])
+				self.link_fill(block_list, [index[0], index[1] + 1], linkrule)
 			if 3 in oldlinks: # Down
-				self.link_fill(block_list, [index[0] + 1, index[1]])
+				self.link_fill(block_list, [index[0] + 1, index[1]], linkrule)
 
 	def clear_lines (self, method):
 		"""
-			Clears lines when the free tetromino is cut to the grid.
+			Clears lines when the free tetrimino is pasted to the grid.
 			method describes the 3 different styles of clearing available:
-			0 refers to naive clearing, where floating blocks are left alone.
+			0 refers to naive clearing, where floating blocks are left alone. Used in old Tetris games.
 			1 refers to sticky clearing, where the floating blocks are grouped by those that share sides.
 			2 refers to cascade clearing, where the original block groupings are preserved.
 
@@ -328,11 +320,11 @@ class Grid (PositionedSurface):
 						# Remove upward links from blocks below.
 						if self.cells[i + 1][j] is not None and 3 in self.cells[i][j].links:
 							self.cells[i + 1][j].links.remove(1)
-							self.cells[i + 1][j].set_graphic(self.cells[i + 1][j].color)
+							self.cells[i + 1][j].set_graphic(self.cells[i + 1][j].color, self.user.linktiles)
 						# Remove downward links from blocks above.
 						if self.cells[i - 1][j] is not None and 1 in self.cells[i][j].links:
 							self.cells[i - 1][j].links.remove(3)
-							self.cells[i - 1][j].set_graphic(self.cells[i - 1][j].color)
+							self.cells[i - 1][j].set_graphic(self.cells[i - 1][j].color, self.user.linktiles)
 						# Just leave the row empty if the method is sticky or cascade.
 						if method > 0:
 							self.cells[i][j] = None
@@ -341,7 +333,7 @@ class Grid (PositionedSurface):
 						# Delete the old row.
 						self.cells.pop(i)
 						# Create new blank row at the top.
-						self.cells.insert(0, [Block([i, 0], 0, fallen = True) if i < 2 or i > 11 else None for i in range(14)])
+						self.cells.insert(0, [Block([i, 0], 0, fallen = True) if i < 2 or i > 11 else None for i in range(15)])
 
 			# If the method is naive, then don't continue.
 			if method > 0:
@@ -365,15 +357,15 @@ class Grid (PositionedSurface):
 								for j in range(2, 12):
 									if self.cells[i][j] is not None and not self.cells[i][j].fallen:
 										# Create new blank temporary shape.
-										tempshape = Shape(7)
+										tempshape = Shape()
 										locked = False
 										# Cut connected blocks from grid to the shape.
 										if method == 1:
 											# Perform a blind flood fill if the method is sticky.
-											self.flood_fill(tempshape.blocks, (i, j))
+											self.flood_fill(tempshape.blocks, (i, j), self.user.linktiles)
 										elif method == 2:
 											# Perform a flood fill considering which blocks are linked if the method is cascade.
-											self.link_fill(tempshape.blocks, (i, j))
+											self.link_fill(tempshape.blocks, (i, j), self.user.linktiles)
 											for block in tempshape.blocks:
 												# If the block being tested isn't connected to the block below it, then the shape it's a part of is blocked.
 												if 3 not in block.links and self.cells[block.relpos[1] + tempshape.pos[1] + 1][block.relpos[0] + tempshape.pos[0]] is not None:
@@ -408,9 +400,9 @@ class Grid (PositionedSurface):
 												self.paste_shape(shape)
 											# If it either did not collide, or collided with another floating shape, copy it to the tempgrid instead.
 											else:
-												tempgrid.append(shape.copy())
+												tempgrid.append(shape.copy(self.user.linktiles))
 										else:
-											tempgrid.append(shape.copy())
+											tempgrid.append(shape.copy(self.user.linktiles))
 
 						# Copy all of the tempgrid's shapes back to the matrix.
 						if len(tempgrid) > 0:
@@ -419,12 +411,12 @@ class Grid (PositionedSurface):
 							
 							# Display intermediate drops so the user can see the combo.
 							# Note: The game will not respond to input during this time.
+							clock.tick(15)
 							pygame.event.pump()
 							screen.blit(game_bg, (0, 0))
 							self.update()
 							self.game.display(True)
 							pygame.display.flip()
-							pygame.time.wait(40)
 
 					# If the tempgrid list is empty, that means that all the blocks have fallen. Check if the fallen blocks caused another line clear.
 					lines_cleared.append(0)
