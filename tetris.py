@@ -2,8 +2,8 @@
 
 try:
 	from engine import *
-except ImportError, error:
-	print "There has been a mistake: ", error
+except ImportError as error:
+	print("There has been a mistake: ", error)
 
 def main ():
 	# Initialize objects.

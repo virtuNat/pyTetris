@@ -2,23 +2,25 @@
 try:
 	from menu import *
 	from shapes import *
-except ImportError, error:
-	print "One of the modules fucked up:"
+except ImportError as error:
+	print("One of the modules fucked up:")
 	raise error
 
 class User (object):
 	"""
-		The User class tracks global game state values, such as
-		plot flags, difficulty, game internal state, etc.
+	The User class tracks global game state values, such as
+	plot flags, difficulty, game internal state, etc.
 
-		In this case, it tracks tetris difficulty values and handles score data.
+	In this case, it tracks tetris difficulty values and handles score data.
 	"""
 
 	def __init__ (self):
 		# Global state variables.
 		self.state = 'main_menu'
 		self.gametype = 'free'
-		# Can be changed in the options menu.
+		# Eventually will be modifiable in the Options Menu.
+		# Default settings are good for Modern Tetris.
+		# Retro Tetris would use cleartype 0, enablekicks, showghost, and linktiles False.
 		self.cleartype = 2 # Determines line clear type, refer to Grid.clear_lines(). 
 		self.enablekicks = True # Determines if wall kicks are allowed.
 		self.showghost = True # Determines if the ghost tetrimino will be shown.
@@ -109,13 +111,13 @@ class User (object):
 
 class Tetris (object):
 	""" 
-		The actual game in itself.
+	The actual game in itself.
 
-		Clear rows of blocks when they fill up by using shapes of 
-		all different possible arrangements of four blocks!
+	Clear rows of blocks when they fill up by using shapes of 
+	all different possible arrangements of four blocks!
 
-		Game ends when the stack of blocks reaches the top!
-		Grab the highest score!
+	Game ends when the stack of blocks reaches the top!
+	Grab the highest score!
 	"""
 
 	def __init__ (self, user, pause_menu, save_menu, loss_menu):
@@ -132,18 +134,17 @@ class Tetris (object):
 		self.grid.game = self
 		self.set_data()
 
-		print "LEFT and RIGHT arrow keys to shift tetrimino left and right."
-		print "DOWN arrow key to speed up falling tetrimino."
-		print "Z or LCTRL keys to rotate tetrimino counter-clockwise. "
-		print "X or UP keys to rotate tetrimino clockwise."
-		print "SPACE key to drop tetrimino, and LSHIFT to hold tetrimino."
-		print "ESCAPE key to pause."
+		print("LEFT and RIGHT arrow keys to shift tetrimino left and right.")
+		print("DOWN arrow key to speed up falling tetrimino.")
+		print("Z or LCTRL keys to rotate tetrimino counter-clockwise. ")
+		print("X or UP keys to rotate tetrimino clockwise.")
+		print("SPACE key to drop tetrimino, and LSHIFT to hold tetrimino.")
+		print("ESCAPE key to pause.")
 
 	def set_data (self):
 		# Initializes the game data.
 		self.grid.set_cells()
 		self.nextshapes = self.gen_shapelist() # List of next shapes.
-		self.nextshapes.extend(self.gen_shapelist())
 		self.freeshape = self.nextshapes.pop(0) # The actual free tetrimino
 		self.newshape = self.freeshape.copy(self.user.linktiles) # Potential new position from user command
 		self.ghostshape = self.freeshape.copy(self.user.linktiles, True) # Ghost position for hard drop
@@ -173,14 +174,14 @@ class Tetris (object):
 
 			self.user.timer = 5 * 60 * 1000 # Remaining time in timed mode.
 		else: # Free mode stays at a comfortable pace.
-			self.fall_delay = 30 # Number of frames between the ones where the tetrimino falls by one block.
-			self.soft_delay = 2 # ^ during soft drop.
+			self.fall_delay = 30 # Number of frames between gravity ticks.
+			self.soft_delay = 3 # ^ during soft drop.
 			self.entry_delay = 20 # Delay between dropping a piece and spawning a new one.
 			self.shift_delay = 20 # The frame delay between holding the button and auto-shifting.
 			self.shift_fdelay = 2 # The frame delay between shifts when auto-shifting.
 
-		self.entry_frame = 0 # Frame counter for the entry delay.
-		self.entry_flag = True # True if a piece is currently in play, False if the player is waiting for a new one.
+		self.entry_frame = self.entry_delay # Frame counter for the entry delay.
+		self.entry_flag = False # True if a piece is currently in play, False if the player is waiting for a new one.
 
 		self.shift_dir = '0' # The current direction the tetrimino is shifting.
 		self.shift_frame = 0 # The frame counter for auto-shifting.
@@ -268,10 +269,10 @@ class Tetris (object):
 
 			elif self.entry_flag:
 				if event.key == pygame.K_z or event.key == pygame.K_LCTRL: # Rotate CCW
-					self.newshape.rotate(-90, self.user.linktiles)
+					self.newshape.rotate(False, self.user.linktiles)
 					self.wall_kick()
 				elif event.key == pygame.K_x or event.key == pygame.K_UP: # Rotate CW
-					self.newshape.rotate(90, self.user.linktiles)
+					self.newshape.rotate(True, self.user.linktiles)
 					self.wall_kick()
 				
 				elif event.key == pygame.K_SPACE: # Hard drop
@@ -340,7 +341,7 @@ class Tetris (object):
 					ghost_collide = True
 					break
 		self.ghostshape.translate((0, -1))
-		if show and self.user.showghost: self.ghostshape.display()
+		if show and self.user.showghost: self.ghostshape.draw()
 
 	def eval_tspin (self):
 		# If a twist hasn't occured after a successful rotation,
@@ -597,15 +598,15 @@ class Tetris (object):
 			self.render_text('{}:{:02d}:{:02d}'.format(self.user.timer // 60000, self.user.timer // 1000 % 60, self.user.timer % 1000 // 10), (255, 255, 255), topright = (ralign, talign + spacing * 7))
 		
 		# Display active piece.
-		if self.entry_flag and not clearing: self.freeshape.display()
+		if self.entry_flag and not clearing: self.freeshape.draw()
 		# Display three next pieces.
 		self.render_text('Up Next:', (255, 255, 255), topleft = (584, self.grid.rect.top + 60))
 		for i in range(3):
-			self.nextshapes[i].display((442, self.grid.rect.top + 101 + (i * 87)), True)
+			self.nextshapes[i].draw([592, self.grid.rect.top + 126 + (i * 87)], True)
 		# Display held piece.
 		self.render_text('Held:', (255, 255, 255), topleft = (162, self.grid.rect.top + 60))
 		if self.storedshape is not None:
-			self.storedshape.display((8, self.grid.rect.top + 101), True)
+			self.storedshape.draw([158, self.grid.rect.top + 126], True)
 
 	def run (self):
 		# Runs the game loop.

@@ -9,8 +9,8 @@ try:
 	import pygame, pygame.mixer
 	import struct
 	import hashlib
-except ImportError, error:
-	print "Something screwey happened:", error
+except ImportError as error:
+	print("Something screwey happened:", error)
 
 pygame.init()
 pygame.mixer.init(buffer = 1024)
@@ -52,8 +52,8 @@ def load_image (name, alpha = None, colorkey = None):
 	# Load an image file into memory. Try not to keep too many of these in memory.
 	try:
 		image = pygame.image.load(os.path.join('textures', name))
-	except pygame.error, err:
-		print "Image could not be loaded: "
+	except pygame.error as err:
+		print("Image could not be loaded: ")
 		raise err
 	if alpha is None:
 		image = image.convert()
@@ -72,24 +72,24 @@ def restart_music():
 	pygame.mixer.music.rewind()
 	pygame.mixer.music.play()
 
-class PositionedSurface (object):
+class FreeSprite (pygame.sprite.Sprite):
 	"""
-		PositionedSurface is a custom class that packs pygame Surfaces and Rects together for 
-		easy handling with custom methods.
+	FreeSprite is the replacement for PositionedSurface; 
+	it retains all of the functionality while including the convenience of being a 
+	pygame.sprite.Sprite child class.
 	"""
 	def __init__ (self, image, rect = None, **initpos):
+		super().__init__()
 		self.image = image
-		if rect is None:
-			self.rect = self.image.get_rect()
-		else:
-			self.rect = rect
+		self.rect = self.image.get_rect() if rect is None else rect
 		self.cliprect = pygame.Rect((0, 0), self.rect.size)
-		self.pos = self.rect.center
 		self.set(**initpos)
+		self.pos = float(self.rect.centerx), float(self.rect.centery) # Position needs to be float to evaluate movement more accurately.
 
-	def set (self, **pos):
-		for key, value in pos.items():
-			setattr(self.rect, key, value)
+	def set (self, **anchors):
+		# Move the sprite's rect to a coordinate given a point to anchor it to.
+		for point, coords in anchors.items():
+			setattr(self.rect, point, coords)
 
 	def move_rt (self, speed, angle):
 		# Convert to rectangular coordinates and add the offset.
@@ -109,17 +109,72 @@ class PositionedSurface (object):
 			self.pos = dest
 		self.set(**anchor)
 
-	def blit_to (self, image):
-		# So I just have to handle it via the self.cliprect attribute rather than some other bullshit.
-		image.blit(self.image, self.rect.topleft, self.cliprect)
+	def animate (self):
+		# So no exception is thrown when attempting to animate combinations of FreeSprites and AnimatedSprites.
+		pass
 
-class AnimatedSprite (PositionedSurface):
-	"""docstring for AnimatedSprite"""
-	def __init__ (self, source, rect = None, **initpos):
-		super(AnimatedSprite, self).__init__(source, rect, **initpos)
+	def draw (self, surf = screen):
+		# Sprite draw method for convenience.
+		surf.blit(self.image, self.rect, self.cliprect)
+
+	def blit_to (self, surf = screen):
+		# Alias for backwards compatibility.
+		self.draw(surf)
+
+class AnimatedSprite (FreeSprite):
+	"""
+	A custom Sprite child class that adds to FreeSprite functionality by adding an 
+	easy way to animate using spritesheets as their source images.
+	"""
+	def __init__ (self, source, rect = None, cliprect = None, valign = False, **initpos):
+		super().__init__(source, rect, **initpos)
+		if cliprect is not None: self.cliprect = cliprect
+
+		self.frame = 0
+		self.frames = 1 # Number of total frames in a single animation.
+		self.valign = valign # If valign is true, the spritesheet is aligned downwards rather than rightwards.
+		self.reverse = False
+
+	def set_clip (self, frame = -1):
+		# Sets the cliprect to the proper frame.
+		if frame >= 0: self.frame = frame
+
+		if self.valign: self.cliprect.top = self.cliprect.h * self.frame
+		else: self.cliprect.left = self.cliprect.w * self.frame
+
+	def create_framelist (self, framelist):
+		# Creates a generator that animates the sprite through a sequence of frames described by framelist.
+		# The generator object returns True when it's finished animating.
+		self.frames = len(framelist)
+		for frame in framelist:
+			self.set_clip(frame)
+			yield False
+		# If you want the animation to loop indefinitely, use it inside a looped if statement that replaces 
+		# the generator object with a new one if True.
+		yield True
 
 	def animate (self):
-		pass
+		# Scrolls through the sprite sheet. Changing the animation row/col will be handled by the sprite itself.
+		# Does not call AnimatedSprite.draw().
+		if self.reverse:
+			if self.frame == 0: self.frame = self.frames - 1
+			else: self.frame -= 1
+		else:
+			if self.frame == self.frames - 1: self.frame = 0
+			else: self.frame += 1
+		self.set_clip()
+
+class FreeGroup (pygame.sprite.Group):
+	"""
+	Custom extended Group class made to be used with FreeSprites or AnimatedSprites.
+	It just replaces the draw function such that it uses the sprites' 
+	cliprects instead of drawing whole source images.
+	"""
+	def animate(self):
+		for sprite in self: sprite.animate()
+
+	def draw (self):
+		for sprite in self: sprite.draw()
 
 class MenuSelection (AnimatedSprite):
 	"""
@@ -129,7 +184,7 @@ class MenuSelection (AnimatedSprite):
 	"""
 
 	def __init__ (self, menu, action, text, pos, size, unsel_bg = None, sel_bg = None):
-		super(MenuSelection, self).__init__(unsel_bg, pygame.Rect(pos, size))
+		super().__init__(unsel_bg, pygame.Rect(pos, size))
 		# Position is the coordinates of the topleft corner of the selection's rectangle.
 		self.action = action
 		self.menu = menu
@@ -159,13 +214,13 @@ class MenuSelection (AnimatedSprite):
 			self.image = self.sel_bg
 		else:
 			self.image = self.unsel_bg
-		self.blit_to(screen)
+		self.draw(screen)
 		screen.blit(self.text, (self.rect.left + (self.rect.width - self.text_rect.width) / 2, self.rect.top + (self.rect.height - self.text_rect.height) / 2))
 
 class Menu (AnimatedSprite):
 	"""
-		The Menu class is the superclass to all menu objects, and will handle basic menu operations, 
-		such as moving along selections, positioning, and committing.
+	The Menu class is the superclass to all menu objects, and will handle basic menu operations, 
+	such as moving along selections, positioning, and committing.
 	"""
 
 	def __init__ (self, user, bg = None, rect = None, **pos):
@@ -174,7 +229,7 @@ class Menu (AnimatedSprite):
 			bg.fill((255, 0, 0))
 		if rect is None:
 			rect = bg.get_rect()
-		super(Menu, self).__init__(bg, rect, **pos)
+		super().__init__(bg, rect, **pos)
 
 		self.user = user
 		self.font = pygame.font.SysFont(None, 25)

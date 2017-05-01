@@ -1,8 +1,8 @@
 # Stores individual menu data.
 try:
 	from runtime import *
-except ImportError, error:
-	print "Runtime has fucking failed:", error
+except ImportError as error:
+	print("Runtime has fucking failed:", error)
 
 menu_bg = AnimatedSprite(pygame.Surface(screen.get_size()))
 menu_bg.image.fill((0, 128, 128))
@@ -16,7 +16,7 @@ def gen_scorelists (name = 'hiscore.dat'):
 				score = list('Pajitnov') + [
 					(15000 + 5000 * (2 - i)) * (10 - j),
 					10 * (10 - j),
-					30000 if i == 1 else 2000 * (10 - j)]
+					30000 if i == 1 else 2500 * (10 - j)]
 				_scorefile.write(struct.pack('>ccccccccQLL', *score))
 
 def decode_scores (splitname = False, name = 'hiscore.dat'):
@@ -30,10 +30,10 @@ def decode_scores (splitname = False, name = 'hiscore.dat'):
 		if len(_scorefile.read()) != 24 * 30:
 			err = True
 		_scorefile.seek(0)
-		scorelists = [_scorefile.read(24) for i in range(30)]
-		scorelists = [struct.unpack('>ccccccccQLL', scorelists[i]) for i in range(30)]
+		scorelists = [struct.unpack('>ccccccccQLL', _scorefile.read(24)) for i in range(30)]
+		scorelists = [[scorelists[i][j].decode() if j < 8 else scorelists[i][j] for j in range(11)] for i in range(30)]
 		if not splitname: scorelists = [[''.join(scorelists[i][:8]), scorelists[i][8], scorelists[i][9], scorelists[i][10]] for i in range(30)]
- 		return [scorelists[:10], scorelists[10:20], scorelists[20:30]]
+		return [scorelists[:10], scorelists[10:20], scorelists[20:30]]
 	if err:
 		gen_scorelists()
 		return decode_scores()
@@ -105,16 +105,18 @@ class MainMenu (Menu):
 
 class PlayMenu (Menu):
 	""" 
-		PlayMenu is the selection menu after "Start Game" is selected, it provides the player 
-		with the available modes of play.
+	PlayMenu is the selection menu after "Start Game" is selected, it provides the player 
+	with the available modes of play.
 
-		Arcade Mode is standard Tetris, with increasing levels dependent on cleared lines. The 
-		speed of the tetrominos dropping increase with the levels, up to a maximum. Score earned 
-		per line cleared increases with level.
+	Arcade Mode is standard Tetris, with increasing levels dependent on cleared lines. The 
+	speed of the tetrominos dropping increase with the levels, up to a maximum. Score earned 
+	per line cleared increases with level.
 
-		Timed Mode is based on a timer that runs down. Dropping pieces and clearing lines cause 
-		delays that are counted by the timer, so it's up to the player to find the most efficient 
-		way to get the highest score in five minutes!
+	Timed Mode is based on a timer that runs down. Dropping pieces and clearing lines cause 
+	delays that are counted by the timer, so it's up to the player to find the most efficient 
+	way to get the highest score in five minutes!
+
+	Free Mode is a casual mode of play that doesn't stress the player. Good for newbies!
 	"""
 
 	def __init__(self, user):
