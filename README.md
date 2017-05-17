@@ -123,3 +123,8 @@ Alpha 1.1.0:
 Alpha 1.1.1:
 - Minor performance improvement with line-clearing, created an explicit Grid.paste_shape() function.
 - Fixed inconsistencies with level assignments in arcade mode.
+
+Alpha 1.1.2:
+- Moved to python 3.4 syntax.
+- Optimized base class code, creating FreeSprite from PositionedSurface, making it easier to add new features and implement animation via the AnimatedSprite class.
+- Fixed a bug arisen from the move that caused a graphical error to occur when clearing lines.
