@@ -21,7 +21,7 @@ class User (object):
 		# Eventually will be modifiable in the Options Menu.
 		# Default settings are good for Modern Tetris.
 		# Retro Tetris would use cleartype 0, enablekicks, showghost, and linktiles False.
-		self.cleartype = 1 # Determines line clear type, refer to Grid.clear_lines(). 
+		self.cleartype = 2 # Determines line clear type, refer to Grid.clear_lines(). 
 		self.enablekicks = True # Determines if wall kicks are allowed.
 		self.showghost = True # Determines if the ghost tetrimino will be shown.
 		self.linktiles = True # Determines if the blocks will use connected textures.
