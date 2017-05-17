@@ -21,6 +21,7 @@ def main ():
 	loss_menu.game = game
 	# Run the program loop. 
 	# User state system allows for easy changing between game states, but requires relevent menus be loaded at all times.
+	# Probably ridiculously memory inefficient, but Python isn't very memory efficient anyway.
 	while user.state != 'quit':
 		clock.tick(60)
 		if user.state == 'main_menu':

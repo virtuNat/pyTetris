@@ -127,7 +127,7 @@ class Shape (FreeGroup):
 		dest.form = self.form
 		dest.pos = self.pos
 		dest.state = self.state
-		for block in self: dest.add(Block(block.relpos, self.form, block.links, linkrule, ghost))
+		for block in self: dest.add(Block(block.relpos, block.color, block.links, linkrule, ghost))
 		return dest
 
 	def copy_to (self, dest, linkrule = True, ghost = False):
@@ -236,6 +236,7 @@ class Grid (AnimatedSprite):
 		# Paste a shape to this grid.
 		for i in range(len(shape)):
 			self.cells[shape.poslist[i][1]][shape.poslist[i][0]] = shape.blocks[i]
+		# print([block.color for block in shape])
 
 	def flood_fill (self, t_shape, index, linkrule):
 		# Recursive blind flood fill function.
@@ -254,7 +255,6 @@ class Grid (AnimatedSprite):
 		if self.cells[index[0]][index[1]] is not None and index[0] < 22 and index[1] > 1 and index[1] < 12:
 			# Cut block from grid to temporary shape.
 			t_shape.add(Block([index[1] - 6, index[0] - 1], self.cells[index[0]][index[1]].color, self.cells[index[0]][index[1]].links, linkrule))
-			for block in t_shape: print(block.color)
 			# Save links to temporary variable before deleting the block.
 			oldlinks = self.cells[index[0]][index[1]].links
 			self.cells[index[0]][index[1]] = None
@@ -340,6 +340,7 @@ class Grid (AnimatedSprite):
 				if cleared:
 					tempgrid = [0]
 					while len(tempgrid):
+						print([len(shape) for shape in tempgrid] if tempgrid[0] != 0 else '0')
 						# Tempgrid is the list of all shapes that have not fallen all the way down yet.
 						tempgrid = [ ]
 						# Set the fallen flag of all blocks above and one row below to False, which means they're 'floating'.
@@ -397,9 +398,9 @@ class Grid (AnimatedSprite):
 												self.paste_shape(shape)
 											# If it either did not collide, or collided with another floating shape, copy it to the tempgrid instead.
 											else:
-												tempgrid.append(shape.copy(self.user.linktiles))
+												tempgrid.append(shape)
 										else:
-											tempgrid.append(shape.copy(self.user.linktiles))
+											tempgrid.append(shape)
 
 						# Copy all of the tempgrid's shapes back to the matrix.
 						if len(tempgrid) > 0:
@@ -408,11 +409,13 @@ class Grid (AnimatedSprite):
 							
 							# Display intermediate drops so the user can see the combo.
 							# Note: The game will not respond to input during this time.
+							# HOW DO I FUCKING FIX THIS.
 							clock.tick(15)
-							pygame.event.pump()
+							self.game.eval_input()
 							screen.blit(game_bg, (0, 0))
 							self.update()
 							self.game.display(True)
+							self.game.eval_pause()
 							pygame.display.flip()
 
 					# If the tempgrid list is empty, that means that all the blocks have fallen. Check if the fallen blocks caused another line clear.

@@ -21,7 +21,7 @@ class User (object):
 		# Eventually will be modifiable in the Options Menu.
 		# Default settings are good for Modern Tetris.
 		# Retro Tetris would use cleartype 0, enablekicks, showghost, and linktiles False.
-		self.cleartype = 2 # Determines line clear type, refer to Grid.clear_lines(). 
+		self.cleartype = 1 # Determines line clear type, refer to Grid.clear_lines(). 
 		self.enablekicks = True # Determines if wall kicks are allowed.
 		self.showghost = True # Determines if the ghost tetrimino will be shown.
 		self.linktiles = True # Determines if the blocks will use connected textures.
@@ -31,7 +31,7 @@ class User (object):
 		self.clear_factor = 2. # The multiplier if the entire matrix was cleared by this piece.
 
 		self.drop_score = 1. # The base score added when a block lands.
-		self.dist_factor = 0.6 # The multiplier for every unit distance dropped by a piece in a soft or hard drop.
+		self.dist_factor = 0.6 # The multiplier per unit distance dropped by a piece in a soft or hard drop.
 		self.hard_flag = False # True if the piece was hard-dropped.
 
 		self.line_score = 500. # The base score added when a line is cleared.
@@ -60,7 +60,7 @@ class User (object):
 		self.timer = 0 # How long the game has been playing.
 
 	def add_score (self, value):
-		# Shortcut adder.
+		# Shortcut adder alias.
 		self.score += int(value)
 
 	def eval_drop_score (self, posdif = 0):
@@ -148,7 +148,7 @@ class Tetris (object):
 		self.freeshape = self.nextshapes.pop(0) # The actual free tetrimino
 		self.newshape = self.freeshape.copy(self.user.linktiles) # Potential new position from user command
 		self.ghostshape = self.freeshape.copy(self.user.linktiles, True) # Ghost position for hard drop
-		self.storedshape = None # Tetromino currently being held for later use.
+		self.storedshape = None # Tetrimino currently being held for later use.
 
 		self.paused = False # Alerts the game to pause.
 		self.collision = False # Collision flag for wall kicks.
@@ -196,7 +196,7 @@ class Tetris (object):
 		return s_list
 
 	def set_shape (self, shape):
-		# Set the active shape.
+		# Set the active shape and reset shape-associated flags.
 		self.floor_kick = True
 		self.hold_lock = False
 		if isinstance(shape, Shape):
@@ -210,7 +210,7 @@ class Tetris (object):
 		self.eval_loss()
 
 	def next_shape (self):
-		# Sets the next shape to be the active one, and resets all flags associated with the previous one.
+		# Increments the shape list.
 		self.set_shape(self.nextshapes.pop(0))
 		if len(self.nextshapes) < 7:
 			self.nextshapes.extend(self.gen_shapelist())
@@ -230,7 +230,7 @@ class Tetris (object):
 					self.storedshape = Shape(self.newshape.form, self.user.linktiles)
 					self.newshape = self.freeshape.copy(self.user.linktiles)
 		else:
-			# Allow pieces to be swapped during spawn delay.
+			# Allow pieces to be swapped during spawn delay. Somewhat brute force.
 			if self.storedshape is None:
 				self.storedshape = Shape(self.nextshapes[0].form, self.user.linktiles)
 				self.nextshapes.pop(0)
@@ -438,6 +438,7 @@ class Tetris (object):
 							else: # I
 								self.test_kicks([(-2, 0), ( 1, 0), (-2,-1), ( 1, 2)])
 				else: self.user.twist_flag = False
+				# Wall kicks reset the gravity timer.
 				if self.user.twist_flag: self.grav_frame = 1
 
 			if self.collision: self.freeshape.copy_to(self.newshape, self.user.linktiles)
@@ -446,6 +447,7 @@ class Tetris (object):
 				self.eval_tspin()
 
 	def eval_gravity (self):
+		# Move shape one block down when gravity ticks.
 		self.newshape.translate((0, 1))
 		for block in self.newshape.blocks:
 			# If collision occurs due to the gravity timer running out:
@@ -665,7 +667,7 @@ class Tetris (object):
 			self.user.timer += clock.get_time()
 		# Display heads-up information.
 		self.display()
-
+		# When a loss occurs, compare current score to scorefile list.
 		if self.user.state == 'loser':
 			if self.user.gametype == 'arcade': g = 0
 			elif self.user.gametype == 'timed': g = 1
@@ -687,6 +689,12 @@ class Tetris (object):
 			self.loss_menu.render_loss()
 			self.loss_menu.set_bg(screen)
 			pygame.mixer.music.fadeout(2500)
+			
+		self.eval_pause()
+		# Refresh screen. Not enough fast rendering to justify using update()
+		pygame.display.flip()
+
+	def eval_pause (self):
 		# Pause game after evaluating frame.
 		if self.paused:
 			self.soft_drop = False
@@ -694,5 +702,3 @@ class Tetris (object):
 			self.paused = False
 			self.pause_menu.set_bg(screen)
 			self.user.state = 'paused'
-		# Refresh screen.
-		pygame.display.flip()
