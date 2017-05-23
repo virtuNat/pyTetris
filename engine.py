@@ -54,7 +54,7 @@ class User (object):
 		# Reset data when starting a new game.
 		self.score = 0 # Score value for the current game.
 		self.last_score = 0 # Score value for the last clear.
-
+		self.line_list = [0] # Tracks how many lines are cleared in a single clearing chain.
 		self.lines_cleared = 0 # Total number of lines cleared in the game.
 		self.level = 1 # Current level in arcade mode.
 		self.timer = 0 # How long the game has been playing.
@@ -72,17 +72,17 @@ class User (object):
 			else:
 				self.add_score(self.drop_score + (self.dist_factor * posdif / 3.))
 
-	def predict_score (self, lines, clearflag):
+	def predict_score (self, clearflag):
 		# Evaluate clear line combo score value, but don't add it yet.
-		if len(lines) > 1 and lines[-1] == 0:
-			lines.pop()
+		if len(self.line_list) > 1 and self.line_list[-1] == 0:
+			self.line_list.pop()
 		temp_score = 0
 		# In arcade mode, level boosts score earned by successive line clears.
 		_lscore = self.line_score
 		if self.gametype == 'arcade': _lscore += self.level * 2.5
 		# Calculate base score from number of cascades and number of lines cleared per cascade.
-		for line in lines: temp_score += (_lscore * line) * (1 + (self.line_factor * (line - 1)))
-		temp_score *= (self.cascade_factor ** (len(lines) - 1)) * self.current_combo
+		for line in self.line_list: temp_score += (_lscore * line) * (1 + (self.line_factor * (line - 1)))
+		temp_score *= (self.cascade_factor ** (len(self.line_list) - 1)) * self.current_combo
 		# Increase score for twists.
 		if self.twist_flag: temp_score *= self.twist_factor
 		# Increase score for T-spins.
@@ -92,9 +92,10 @@ class User (object):
 		if self.gametype == 'timed': temp_score *= float(30 - (self.timer // 10000)) / 10
 		return int(temp_score)
 
-	def eval_clear_score (self, lines, clearflag):
+	def eval_clear_score (self, clearflag):
 		# Add the clear line score.
-		self.last_score = self.predict_score(lines, clearflag)
+		self.lines_cleared += sum(self.line_list)
+		self.last_score = self.predict_score(clearflag)
 		self.add_score(self.last_score)
 
 	def eval_level (self):
@@ -150,6 +151,7 @@ class Tetris (object):
 		self.ghostshape = self.freeshape.copy(self.user.linktiles, True) # Ghost position for hard drop
 		self.storedshape = None # Tetrimino currently being held for later use.
 
+		self.clearing = False # Puts the game on hold when clearing loops.
 		self.paused = False # Alerts the game to pause.
 		self.collision = False # Collision flag for wall kicks.
 		self.floor_kick = True # Can't floor kick if False.
@@ -207,7 +209,7 @@ class Tetris (object):
 		self.ghostshape = self.freeshape.copy(self.user.linktiles, True)
 		self.eval_ghost(False)
 		# Test for obstructions. If they exist, the player lost.
-		self.eval_loss()
+		self.eval_block()
 
 	def next_shape (self):
 		# Increments the shape list.
@@ -468,7 +470,8 @@ class Tetris (object):
 		self.user.eval_drop_score(posdif)
 		self.grid.paste_shape(self.freeshape)
 		# Check if lines were cleared, and add the number of lines cleared to the total if any.
-		self.user.lines_cleared += sum(self.grid.clear_lines(self.user.cleartype))
+		self.clearing = True
+		self.line_clearer = self.grid.clear_lines()
 		self.grid.update()
 		# Reset flags pertaining to dropped state of the tetrimino.
 		self.user.twist_flag = False
@@ -484,7 +487,7 @@ class Tetris (object):
 		if self.user.state == 'loser':
 			self.grav_frame = 30
 
-	def eval_loss (self):
+	def eval_block (self):
 		# If the shape spawns on top of placed blocks, it's game over.
 		obstructed = False
 		for block in self.freeshape.blocks:
@@ -539,6 +542,30 @@ class Tetris (object):
 		else:
 			self.user.state = 'loser'
 
+	def eval_loss (self):
+		# When a loss occurs, compare current score to scorefile list.
+		if self.user.state == 'loser':
+			if self.user.gametype == 'arcade': g = 0
+			elif self.user.gametype == 'timed': g = 1
+			elif self.user.gametype == 'free': g = 2
+
+			_scorelist = decode_scores()[g]
+			_i = 10
+			for i in range(9, -1, -1):
+				if _scorelist[i][1] < self.user.score:
+					_i = i
+				elif _scorelist[i][1] == self.user.score and _scorelist[i][2] >= self.user.lines_cleared:
+					_i = i
+					if _scorelist[i][2] == self.user.lines_cleared and _scorelist[i][3] >= self.user.timer:
+						_i = i
+			if _i < 10:
+				self.save_menu.render_place(_i)
+				self.user.state = 'save_scores'
+
+			self.loss_menu.render_loss()
+			self.loss_menu.set_bg(screen)
+			pygame.mixer.music.fadeout(2500)
+
 	def ramp_arcade (self, oldlevel):
 		# Manages the difficulty of arcade mode.
 
@@ -574,7 +601,7 @@ class Tetris (object):
 		tsurf = self.font.render(text, 0, color)
 		screen.blit(tsurf, tsurf.get_rect(**pos))
 
-	def display (self, clearing = False):
+	def display (self):
 		# Display relevant stuff.
 		lalign = 113
 		ralign = 253
@@ -587,7 +614,8 @@ class Tetris (object):
 		self.render_text('{}'.format(self.user.score), (255, 255, 255), topright = (ralign, talign + spacing))
 		# Display score from last clear.
 		self.render_text('Last Clear:', (255, 255, 255), topleft = (lalign, talign + spacing * 2))
-		self.render_text('{}'.format(self.user.last_score), (255, 255, 255), topright = (ralign, talign + spacing * 3))
+		if self.clearing: self.render_text('{}'.format(self.user.predict_score(False)), (255, 255, 255), topright = (ralign, talign + spacing * 3))
+		else: self.render_text('{}'.format(self.user.last_score), (255, 255, 255), topright = (ralign, talign + spacing * 3))
 		# Display total tiles cleared.
 		self.render_text('Lines Cleared:', (255, 255, 255), topleft = (lalign, talign + spacing * 4))
 		self.render_text('{}'.format(self.user.lines_cleared), (255, 255, 255), topright = (ralign, talign + spacing * 5))
@@ -600,7 +628,7 @@ class Tetris (object):
 			self.render_text('{}:{:02d}:{:02d}'.format(self.user.timer // 60000, self.user.timer // 1000 % 60, self.user.timer % 1000 // 10), (255, 255, 255), topright = (ralign, talign + spacing * 7))
 		
 		# Display active piece.
-		if self.entry_flag and not clearing: self.freeshape.draw()
+		if self.entry_flag and not self.clearing: self.freeshape.draw()
 		# Display three next pieces.
 		self.render_text('Up Next:', (255, 255, 255), topleft = (584, self.grid.rect.top + 60))
 		for i in range(3):
@@ -609,6 +637,15 @@ class Tetris (object):
 		self.render_text('Held:', (255, 255, 255), topleft = (162, self.grid.rect.top + 60))
 		if self.storedshape is not None:
 			self.storedshape.draw([158, self.grid.rect.top + 126], True)
+
+	def eval_pause (self):
+		# Pause game after evaluating frame.
+		if self.paused:
+			self.soft_drop = False
+			self.shift_dir = '0'
+			self.paused = False
+			self.pause_menu.set_bg(screen)
+			self.user.state = 'paused'
 
 	def run (self):
 		# Runs the game loop.
@@ -621,84 +658,57 @@ class Tetris (object):
 		# Display the background.
 		screen.blit(self.bg, (0, 0))
 		# Display and manage the grid.
-		self.grid.update()
-
+		self.grid.update()		
 		# Evaluate inputs and kick if necessary.
 		self.eval_input()
-		# Evaluate translation.
-		self.eval_shift()
-		# If the spawn delay isn't active:
-		if self.entry_flag:
-			# Evaluate ghost tetrimino and display it.
-			self.eval_ghost()
-			# Set the gravity delay to the appropriate value depending on whether soft drop is active or not.
-			if self.soft_drop: self.grav_delay = self.soft_delay
-			else: self.grav_delay = self.fall_delay
 
-			# Evaluate gravity.
-			if self.eval_gravity(): # If collision will occur due to gravity:
-				if self.grav_frame < self.fall_delay: self.grav_frame += 1 # Use default timer instead of the soft drop timer.
-				else: # Evaluate dropped piece.
-					self.grav_frame = 0
-					self.eval_fallen(self.ghostshape.pos[1] - self.soft_pos if self.soft_drop else 0)
+		if not self.clearing:
+			# Evaluate translation.
+			self.eval_shift()
+			# If the spawn delay isn't active:
+			if self.entry_flag:
+				# Evaluate ghost tetrimino and display it.
+				self.eval_ghost()
+				# Set the gravity delay to the appropriate value depending on whether soft drop is active or not.
+				if self.soft_drop: self.grav_delay = self.soft_delay
+				else: self.grav_delay = self.fall_delay
 
-			else: # If there won't be gravity collision:
-				if self.grav_frame < self.grav_delay: self.grav_frame += 1
-				else: # Move shape down.
-					self.grav_frame = 0
-					self.newshape.translate((0, 1))
-		# If it is, count down the number of frames until it's time to deactivate it.
-		elif self.entry_frame > 0:
-			self.entry_frame -= 1
-		else:
-			self.entry_flag = True
-			self.next_shape()
+				# Evaluate gravity.
+				if self.eval_gravity(): # If collision will occur due to gravity:
+					if self.grav_frame < self.fall_delay: self.grav_frame += 1 # Use default timer instead of the soft drop timer.
+					else: # Evaluate dropped piece.
+						self.grav_frame = 0
+						self.eval_fallen(self.ghostshape.pos[1] - self.soft_pos if self.soft_drop else 0)
 
-		# Evaluate timer at the end of the frame.
-		if self.user.gametype == 'timed':
-			# Evaluate the timer in timed mode.
-			if self.user.timer > 0:
-				self.user.timer -= clock.get_time()
+				else: # If there won't be gravity collision:
+					if self.grav_frame < self.grav_delay: self.grav_frame += 1
+					else: # Move shape down.
+						self.grav_frame = 0
+						self.newshape.translate((0, 1))
+			# If it is, count down the number of frames until it's time to deactivate it.
+			elif self.entry_frame > 0:
+				self.entry_frame -= 1
 			else:
-				self.user.timer = 0
-				self.user.state = 'loser'
+				self.entry_flag = True
+				self.next_shape()
+
+			# Evaluate timer at the end of the frame.
+			if self.user.gametype == 'timed':
+				# Evaluate the timer in timed mode.
+				if self.user.timer > 0:
+					self.user.timer -= clock.get_time()
+				else:
+					self.user.timer = 0
+					self.user.state = 'loser'
+			else:
+				# Increment timer for non-timed modes so it could be appended to the high score.
+				self.user.timer += clock.get_time()
 		else:
-			# Increment timer for non-timed modes so it could be appended to the high score.
-			self.user.timer += clock.get_time()
+			clock.tick(15)
+			self.clearing = next(self.line_clearer)
 		# Display heads-up information.
 		self.display()
-		# When a loss occurs, compare current score to scorefile list.
-		if self.user.state == 'loser':
-			if self.user.gametype == 'arcade': g = 0
-			elif self.user.gametype == 'timed': g = 1
-			elif self.user.gametype == 'free': g = 2
-
-			_scorelist = decode_scores()[g]
-			_i = 10
-			for i in range(9, -1, -1):
-				if _scorelist[i][1] < self.user.score:
-					_i = i
-				elif _scorelist[i][1] == self.user.score and _scorelist[i][2] >= self.user.lines_cleared:
-					_i = i
-					if _scorelist[i][2] == self.user.lines_cleared and _scorelist[i][3] >= self.user.timer:
-						_i = i
-			if _i < 10:
-				self.save_menu.render_place(_i)
-				self.user.state = 'save_scores'
-
-			self.loss_menu.render_loss()
-			self.loss_menu.set_bg(screen)
-			pygame.mixer.music.fadeout(2500)
-			
+		self.eval_loss()			
 		self.eval_pause()
-		# Refresh screen. Not enough fast rendering to justify using update()
+		# Refresh screen. There is not enough fast rendering to justify using update()
 		pygame.display.flip()
-
-	def eval_pause (self):
-		# Pause game after evaluating frame.
-		if self.paused:
-			self.soft_drop = False
-			self.shift_dir = '0'
-			self.paused = False
-			self.pause_menu.set_bg(screen)
-			self.user.state = 'paused'

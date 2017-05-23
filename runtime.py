@@ -117,10 +117,6 @@ class FreeSprite (pygame.sprite.Sprite):
 		# Sprite draw method for convenience.
 		surf.blit(self.image, self.rect, self.cliprect)
 
-	def blit_to (self, surf = screen):
-		# Alias for backwards compatibility.
-		self.draw(surf)
-
 class AnimatedSprite (FreeSprite):
 	"""
 	A custom Sprite child class that adds to FreeSprite functionality by adding an 

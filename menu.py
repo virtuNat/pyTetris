@@ -98,8 +98,8 @@ class MainMenu (Menu):
 					self.user.state = 'quit'
 
 	def run (self):
-		menu_bg.blit_to(screen)
-		self.blit_to(screen)
+		menu_bg.draw(screen)
+		self.draw(screen)
 		super(MainMenu, self).run()
 		pygame.display.flip()
 
@@ -153,8 +153,8 @@ class PlayMenu (Menu):
 				self.user.state = 'main_menu'
 
 	def run (self):
-		menu_bg.blit_to(screen)
-		self.blit_to(screen)
+		menu_bg.draw(screen)
+		self.draw(screen)
 		super(PlayMenu, self).run()
 		pygame.display.flip()
 
@@ -197,8 +197,8 @@ class HiScoreMenu (Menu):
 			self.render_text('{}:{:02d}:{:02d}'.format(d_scores[i][3]//6000, d_scores[i][3]//100%60, d_scores[i][3]%100), (0, 0, 0), topright = (self.rect.right - 30, self.rect.top + 120 + i * 35))
 
 	def run (self):
-		menu_bg.blit_to(screen)
-		self.blit_to(screen)
+		menu_bg.draw(screen)
+		self.draw(screen)
 		super(HiScoreMenu, self).run()
 		self.display_scores()
 		pygame.display.flip()
@@ -255,7 +255,7 @@ class PauseMenu (Menu):
 
 	def run (self):
 		screen.blit(self.pause_bg, (0, 0))
-		self.blit_to(screen)
+		self.draw(screen)
 		super(PauseMenu, self).run()
 		pygame.display.flip()
 
@@ -315,7 +315,7 @@ class SaveMenu (Menu):
 		self.render_text('{}:{:02d}:{:02d}'.format(_time // 6000, _time // 100 % 60, _time % 100), (0, 0, 0), topright = (self.rect.right - 20, self.rect.top + 65))
 
 	def run (self):
-		self.blit_to(screen)
+		self.draw(screen)
 		self.eval_input()
 		self.display_score()
 		pygame.display.flip()
@@ -367,7 +367,7 @@ class LossMenu (Menu):
 
 	def run (self):
 		screen.blit(self.loss_bg, (0, 0))
-		self.blit_to(screen)
+		self.draw(screen)
 		self.render_text("Game Over!", (255, 255, 255), midtop = (self.rect.centerx, self.rect.top + 15))
 		self.render_text("Your score was: " + str(self.loss_score), (255, 255, 255), midtop = (self.rect.centerx, self.rect.top + 40))
 		super(LossMenu, self).run()
