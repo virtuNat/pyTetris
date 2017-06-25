@@ -419,7 +419,7 @@ class Grid (AnimatedSprite):
 			# If no lines were cleared, break combo.
 			self.user.current_combo = 1.0
 			self.user.combo_ctr = 0
-		# Once done clearing lines, set the clearing flag to false to avoid the StopIteration exception from being raised.
+		# Once done clearing lines, set the clearing flag to False to avoid the StopIteration exception from being raised.
 		yield False
 
 	def update (self):

@@ -167,7 +167,7 @@ class Tetris (object):
 			self.shift_fdelay = 4
 			self.line_frame = 300 # Frame counter for the number of frames between garbage line additions.
 
-		elif self.user.gametype == 'timed': # Timed mode is faster to induce stress.
+		elif self.user.gametype == 'timed': # Timed mode is faster to get the player rolling.
 			self.fall_delay = 10
 			self.soft_delay = 1
 			self.entry_delay = 10
@@ -562,8 +562,7 @@ class Tetris (object):
 				self.save_menu.render_place(_i)
 				self.user.state = 'save_scores'
 
-			self.loss_menu.render_loss()
-			self.loss_menu.set_bg(screen)
+			self.loss_menu.render_loss(screen)
 			pygame.mixer.music.fadeout(2500)
 
 	def ramp_arcade (self, oldlevel):
@@ -614,8 +613,10 @@ class Tetris (object):
 		self.render_text('{}'.format(self.user.score), (255, 255, 255), topright = (ralign, talign + spacing))
 		# Display score from last clear.
 		self.render_text('Last Clear:', (255, 255, 255), topleft = (lalign, talign + spacing * 2))
-		if self.clearing: self.render_text('{}'.format(self.user.predict_score(False)), (255, 255, 255), topright = (ralign, talign + spacing * 3))
-		else: self.render_text('{}'.format(self.user.last_score), (255, 255, 255), topright = (ralign, talign + spacing * 3))
+		if self.clearing: 
+			self.render_text('{}'.format(self.user.predict_score(False)), (255, 255, 255), topright = (ralign, talign + spacing * 3))
+		else: 
+			self.render_text('{}'.format(self.user.last_score), (255, 255, 255), topright = (ralign, talign + spacing * 3))
 		# Display total tiles cleared.
 		self.render_text('Lines Cleared:', (255, 255, 255), topleft = (lalign, talign + spacing * 4))
 		self.render_text('{}'.format(self.user.lines_cleared), (255, 255, 255), topright = (ralign, talign + spacing * 5))
@@ -661,7 +662,7 @@ class Tetris (object):
 		self.grid.update()		
 		# Evaluate inputs and kick if necessary.
 		self.eval_input()
-
+		# Skip majority of game code if the lineclearer object is active- aka the Grid.clear_lines() generator.
 		if not self.clearing:
 			# Evaluate translation.
 			self.eval_shift()
@@ -704,7 +705,7 @@ class Tetris (object):
 				# Increment timer for non-timed modes so it could be appended to the high score.
 				self.user.timer += clock.get_time()
 		else:
-			clock.tick(15)
+			clock.tick(30)
 			self.clearing = next(self.line_clearer)
 		# Display heads-up information.
 		self.display()

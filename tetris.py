@@ -1,10 +1,5 @@
 #!/usr/bin/env python
 
-try:
-	from engine import *
-except ImportError as error:
-	print("There has been a mistake: ", error)
-
 def main ():
 	# Initialize objects.
 	user = User()
@@ -46,4 +41,8 @@ def main ():
 	sys.exit(1)
 		
 if __name__ == '__main__':
+	try:
+		from engine import *
+	except ImportError as error:
+		print("There has been a mistake: ", error)
 	main()

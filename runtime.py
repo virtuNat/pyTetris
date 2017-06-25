@@ -78,18 +78,18 @@ class FreeSprite (pygame.sprite.Sprite):
 	it retains all of the functionality while including the convenience of being a 
 	pygame.sprite.Sprite child class.
 	"""
-	def __init__ (self, image, rect = None, **initpos):
+	def __init__ (self, image, rect = None, cliprect = None, **initpos):
 		super().__init__()
 		self.image = image
 		self.rect = self.image.get_rect() if rect is None else rect
-		self.cliprect = pygame.Rect((0, 0), self.rect.size)
+		self.cliprect = pygame.Rect((0, 0), self.rect.size) if cliprect is None else cliprect
 		self.set(**initpos)
 		self.pos = float(self.rect.centerx), float(self.rect.centery) # Position needs to be float to evaluate movement more accurately.
 
 	def set (self, **anchors):
 		# Move the sprite's rect to a coordinate given a point to anchor it to.
-		for point, coords in anchors.items():
-			setattr(self.rect, point, coords)
+		for point, coord in anchors.items():
+			setattr(self.rect, point, coord)
 
 	def move_rt (self, speed, angle):
 		# Convert to rectangular coordinates and add the offset.
@@ -123,8 +123,7 @@ class AnimatedSprite (FreeSprite):
 	easy way to animate using spritesheets as their source images.
 	"""
 	def __init__ (self, source, rect = None, cliprect = None, valign = False, **initpos):
-		super().__init__(source, rect, **initpos)
-		if cliprect is not None: self.cliprect = cliprect
+		super().__init__(source, rect, cliprect, **initpos)
 
 		self.frame = 0
 		self.frames = 1 # Number of total frames in a single animation.
@@ -172,46 +171,52 @@ class FreeGroup (pygame.sprite.Group):
 	def draw (self):
 		for sprite in self: sprite.draw()
 
-class MenuSelection (AnimatedSprite):
+class MenuOption (AnimatedSprite):
 	"""
-		Menu Selections store the data of a selection in a menu, such as the name, position, 
-		and image associated with it. It will also handle simple manipulation of its 'selected' 
-		state and display.
+	Menu Options are sprites for the individual selectable options in a Menu object.
+	To derive unique animated behavior other than alternating between a two-frame sprite, 
+	create a subclass.
+
+	Improved version of the old MenuSelection class.
 	"""
-
-	def __init__ (self, menu, action, text, pos, size, unsel_bg = None, sel_bg = None):
-		super().__init__(unsel_bg, pygame.Rect(pos, size))
-		# Position is the coordinates of the topleft corner of the selection's rectangle.
-		self.action = action
-		self.menu = menu
-		self.text = self.menu.font.render(text, 0, pygame.Color(255, 255, 255))
-		self.text_rect = self.text.get_rect()
-
-		if unsel_bg is None:
-			unsel_bg = pygame.Surface(size)
-			unsel_bg.fill((64, 64, 64))
-			self.image = unsel_bg
-		self.unsel_bg = unsel_bg
-		if sel_bg is None:
-			self.sel_bg = pygame.Surface(size)
-			self.sel_bg.fill((128, 128, 128))
-		else:
-			self.sel_bg = sel_bg
+	def __init__(self, menu, action, text, pos = (0, 0), clip = (0, 0, 20, 20), src = None, relative = True):
+		if type(clip) is tuple:
+			if len(clip) == 2:
+				clip = pygame.Rect((0, 0), clip)
+			else:
+				clip = pygame.Rect(clip)
 		
+		if src is None:
+			src = pygame.Surface((clip.width * 2, clip.height))
+			src.fill(0x3F3F3F)
+			selbg = pygame.Surface(clip.size)
+			selbg.fill(0x7F7F7F)
+			src.blit(selbg, (clip.width, 0))
+			del selbg
+
+		super().__init__(src, pygame.Rect(pos, clip.size), clip)
+		self.menu = menu
+		self.action = action
+
+		if relative: self.set(top = self.menu.rect.top + self.rect.top, left = self.menu.rect.left + self.rect.left)
+
+		if text is not None:
+			self.text = self.menu.font.render(text, 0, pygame.Color(255, 255, 255))
+			self.text_rect = self.text.get_rect()
+		else: self.text = None
+
 		self.selected = False
 
 	def set_select (self, state):
 		# Set selection state to True or False.
 		self.selected = state
 
-	def update (self):
-		# Update and display the image and text associated with this option.
-		if self.selected:
-			self.image = self.sel_bg
-		else:
-			self.image = self.unsel_bg
-		self.draw(screen)
-		screen.blit(self.text, (self.rect.left + (self.rect.width - self.text_rect.width) / 2, self.rect.top + (self.rect.height - self.text_rect.height) / 2))
+	def update (self, surf = screen):
+		self.set_clip(1 if self.selected else 0)
+		self.draw(surf)
+		if self.text is not None:
+			self.text_rect.center = self.rect.center
+			surf.blit(self.text, self.text_rect)
 
 class Menu (AnimatedSprite):
 	"""
@@ -232,7 +237,7 @@ class Menu (AnimatedSprite):
 		# Coordinates of currently selected selection.
 		self.selection = [0, 0]
 		# All menus will have their own selections set, effectively a 2d array, with the range length set at every instance.
-		self.selections = [[MenuSelection(self, 'Null', ' ', self.rect.topleft, (20, 20))]]
+		self.selections = [[MenuOption(self, 'Null', ' ')]]
 		self.set_range()
 		# Selection movement.
 		self.up = False
@@ -261,10 +266,32 @@ class Menu (AnimatedSprite):
 		# Easy way of getting the current selection.
 		return self.selections[i][j]
 
-	def render_text (self, text, color, **pos):
+	def render_text (self, text, color, surf = screen, **pos):
 		# Render a message to the screen.
 		tsurf = self.font.render(text, 0, color)
-		screen.blit(tsurf, tsurf.get_rect(**pos))
+		surf.blit(tsurf, tsurf.get_rect(**pos))
+
+	@staticmethod
+	def render (method):
+		"""
+		Modifies a method written to display menu details relative to the background surface of the menu,
+		blitting all of it to a colorkey-preset surface passed as the second argument to the original method.
+
+		For this to work, the display method needs to have a second argument as the surface to be used,
+		all constituent surface are blitted to that surface and don't need magenta (0xFF00FF).
+
+		To call this decorator, use @Menu.render
+		"""
+		def wrapper(self, *args, **kwargs):
+			rsurf = pygame.Surface(self.rect.size)
+			rsurf.fill(0xFF00FF)
+			rsurf.set_colorkey(0xFF00FF)
+
+			method(self, rsurf, *args, **kwargs)
+
+			screen.blit(rsurf, self.rect)
+		return wrapper
+
 
 	def eval_input (self):
 		# Evaluate user input. Handling of specific options is menu-specific.
@@ -299,7 +326,7 @@ class Menu (AnimatedSprite):
 				self.movetime = self.basetime
 		return event
 
-	def run (self):
+	def run (self, surf = screen):
 		# Update the movement values per frame.
 		self.eval_input()
 		# Move selection.
@@ -350,4 +377,4 @@ class Menu (AnimatedSprite):
 		self.get_selected(*self.selection).set_select(True)
 		for items in self.selections:
 			for item in items:
-				item.update()
+				item.update(surf)
