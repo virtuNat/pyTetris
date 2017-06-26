@@ -346,7 +346,7 @@ class LossMenu (Menu):
 							MenuOption(self, 'quit', 'Return to Menu', (hmargin, tmargin + 3 * (spacing + height)), (self.rect.width - 2 * hmargin, height))]]
 		self.set_range()
 
-	def render_loss (self):
+	def render_loss (self, bg):
 		# To be called inside the game engine, saving relevant game data to be used.
 		self.loss_score = self.user.score
 		self.loss_bg.blit(bg, (0, 0))

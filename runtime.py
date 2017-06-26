@@ -147,21 +147,29 @@ class AnimatedSprite (FreeSprite):
 		# If you want the animation to loop indefinitely, use it inside a looped if statement that replaces 
 		# the generator object with a new one if True.
 		yield True
+
+	def __iter__ (self):
+		# Initializes the sprite as an iterator.
+		if self.reverse:
+			self.frame = self.frames - 1
+		else: self.frame = 0
+		self.set_clip()
+		return self
 	
 	def __next__ (self):
-		if self.reverse:
-			if self.frame == 0: self.frame = self.frames - 1
-			else: self.frame -= 1
-		else:
-			if self.frame == self.frames - 1: self.frame = 0
-			else: self.frame += 1
-		return self.frame
-
-	def animate (self):
 		# Scrolls through the sprite sheet. Changing the animation row/col will be handled by the sprite itself.
 		# Does not call AnimatedSprite.draw().
-		next(self)
+		if self.reverse:
+			if self.frame == 0: raise StopIteration
+			else: self.frame -= 1
+		else:
+			if self.frame == self.frames - 1: raise StopIteration
+			else: self.frame += 1
 		self.set_clip()
+
+	def animate (self):
+		# Alias to the class's __next__ method which does the scrolling animation.
+		next(self)
 
 class FreeGroup (pygame.sprite.Group):
 	"""

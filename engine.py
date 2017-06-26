@@ -146,9 +146,9 @@ class Tetris (object):
 		# Initializes the game data.
 		self.grid.set_cells()
 		self.nextshapes = self.gen_shapelist() # List of next shapes.
-		self.freeshape = self.nextshapes.pop(0) # The actual free tetrimino
-		self.newshape = self.freeshape.copy(self.user.linktiles) # Potential new position from user command
-		self.ghostshape = self.freeshape.copy(self.user.linktiles, True) # Ghost position for hard drop
+		self.freeshape = Shape() # The actual free tetrimino
+		self.newshape = Shape() # Potential new position from user command
+		self.ghostshape = Shape() # Ghost position for hard drop
 		self.storedshape = None # Tetrimino currently being held for later use.
 
 		self.clearing = False # Puts the game on hold when clearing loops.
