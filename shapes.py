@@ -32,13 +32,13 @@ class Block (FreeSprite):
 	def copy (self, block = None, linkrule = True, ghost = False):
 		# Create new Block object that is the same as this one.
 		if block is None:
-			newblock = Block(self.relpos, self.color, self.links, linkrule, ghost)
-			return newblock
+			return Block(self.relpos, self.color, self.links, linkrule, ghost)
 		else:
-			block.color = self.color
 			block.relpos = self.relpos
+			block.color = self.color
 			block.links = self.links
-			block.update(self.color, linkrule, ghost)
+			block.ghost = self.ghost
+			block.update = Block(self.color, linkrule, ghost)
 
 	def update (self, color, linkrule = True, ghost = False):
 		# Evaluate the graphic to be used. Not much else to update in Block Sprites.
@@ -194,13 +194,13 @@ class Shape (FreeGroup):
 
 class Grid (AnimatedSprite):
 	"""
-		The Matrix upon which the game is played. When shapes fall and can no longer be moved, 
-		their blocks are stored here. Fallen block colors and links are kept.
+	The Matrix upon which the game is played. When shapes fall and can no longer be moved, 
+	their blocks are stored here. Fallen block colors and links are kept.
 
-		The Grid object extends beyond the visible playing field 2 blocks in every direction, 
-		with empty space on the top to spawn new shapes in and invisible blocks on the walls and floor.
+	The Grid object extends beyond the visible playing field 2 blocks in every direction, 
+	with empty space on the top to spawn new shapes in and invisible blocks on the walls and floor.
 
-		Said invisible blocks mean that the only required checks per frame are collision detection checks.
+	Said invisible blocks mean that the only required checks per frame are collision detection checks.
 	"""
 
 	def __init__(self, user):
@@ -238,7 +238,7 @@ class Grid (AnimatedSprite):
 
 	def flood_fill (self, t_shape, index, linkrule):
 		# Recursive blind flood fill function.
-		if self.cells[index[0]][index[1]] is not None and index[0] < 22 and index[1] > 1 and index[1] < 12:
+		if self.cells[index[0]][index[1]] is not None and index[0] < 22 and 1 < index[1] < 12:
 			# Cut block from grid to temporary shape.
 			t_shape.add(Block([index[1] - 6, index[0] - 1], self.cells[index[0]][index[1]].color, self.cells[index[0]][index[1]].links, linkrule))
 			self.cells[index[0]][index[1]] = None
@@ -250,7 +250,7 @@ class Grid (AnimatedSprite):
 
 	def link_fill (self, t_shape, index, linkrule):
 		# Recursive flood fill function using the links.
-		if self.cells[index[0]][index[1]] is not None and index[0] < 22 and index[1] > 1 and index[1] < 12:
+		if self.cells[index[0]][index[1]] is not None and index[0] < 22 and 1 < index[1] < 12:
 			# Cut block from grid to temporary shape.
 			t_shape.add(Block([index[1] - 6, index[0] - 1], self.cells[index[0]][index[1]].color, self.cells[index[0]][index[1]].links, linkrule))
 			# Save links to temporary variable before deleting the block.
@@ -269,14 +269,14 @@ class Grid (AnimatedSprite):
 
 	def clear_lines (self):
 		"""
-			Clears lines when the free tetrimino is pasted to the grid.
-			self.user.cleartype describes the 3 different styles of clearing available:
-			0 refers to naive clearing, where floating blocks are left alone. Used in old Tetris games.
-			1 refers to sticky clearing, where the floating blocks are grouped by those that share sides.
-			2 refers to cascade clearing, where the original block groupings are preserved.
+		Clears lines when the free tetrimino is pasted to the grid.
+		self.user.cleartype describes the 3 different styles of clearing available:
+		0 refers to naive clearing, where floating blocks are left alone. Used in old Tetris games.
+		1 refers to sticky clearing, where the floating blocks are grouped by those that share sides.
+		2 refers to cascade clearing, where the original block groupings are preserved.
 
-			In both sticky and cascade clearing, the groups will fall as if they were still active, then 
-			the lines will be re-evaluated to see if another clear happened.
+		In both sticky and cascade clearing, the groups will fall as if they were still active, then 
+		the lines will be re-evaluated to see if another clear happened.
 		"""
 		# Track how many lines are cleared per chain.
 		self.user.line_list = [0]

@@ -69,7 +69,7 @@ class MainMenu (Menu):
 	def __init__ (self, user, score_menu):
 		bg = pygame.Surface((210, 300))
 		bg.fill((0, 255, 0))
-		super(MainMenu, self).__init__(user, bg, midtop = (screen.get_width() / 2, 250))
+		super().__init__(user, bg, midtop = (screen.get_width() / 2, 250))
 		self.score_menu = score_menu
 
 		hmargin = 15 # horizontal margin in pixels
@@ -84,23 +84,23 @@ class MainMenu (Menu):
 		self.set_range()
 
 	def eval_input (self):
-		event = super(MainMenu, self).eval_input()
+		event = super().eval_input()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
-				if self.get_selected(*self.selection).action == 'play':
+				if self.select(*self.selection).action == 'play':
 					self.user.state = 'play_menu'
-				elif self.get_selected(*self.selection).action == 'hiscore':
+				elif self.select(*self.selection).action == 'hiscore':
 					self.user.state = 'view_scores'
 					self.score_menu.scorelist = decode_scores()
-				elif self.get_selected(*self.selection).action == 'options':
+				elif self.select(*self.selection).action == 'options':
 					pass
-				elif self.get_selected(*self.selection).action == 'quit':
+				elif self.select(*self.selection).action == 'quit':
 					self.user.state = 'quit'
 
 	def run (self):
 		menu_bg.draw(screen)
 		self.draw(screen)
-		super(MainMenu, self).run()
+		super().run()
 		pygame.display.flip()
 
 class PlayMenu (Menu):
@@ -122,7 +122,7 @@ class PlayMenu (Menu):
 	def __init__(self, user):
 		bg = pygame.Surface((620, 300))
 		bg.fill((0, 255, 64))
-		super(PlayMenu, self).__init__(user, bg, midtop = (screen.get_width() / 2, 250))
+		super().__init__(user, bg, midtop = (screen.get_width() / 2, 250))
 
 		hmargin = 20
 		spacing = 14
@@ -135,14 +135,14 @@ class PlayMenu (Menu):
 		self.set_range()
 
 	def eval_input (self):
-		event = super(PlayMenu, self).eval_input()
+		event = super().eval_input()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
-				if self.get_selected(*self.selection).action == 'arcade':
+				if self.select(*self.selection).action == 'arcade':
 					self.user.gametype = 'arcade'
-				elif self.get_selected(*self.selection).action == 'timed':
+				elif self.select(*self.selection).action == 'timed':
 					self.user.gametype = 'timed'
-				elif self.get_selected(*self.selection).action == 'free':
+				elif self.select(*self.selection).action == 'free':
 					self.user.gametype = 'free'
 
 				self.user.state = 'in_game'
@@ -155,21 +155,21 @@ class PlayMenu (Menu):
 	def run (self):
 		menu_bg.draw(screen)
 		self.draw(screen)
-		super(PlayMenu, self).run()
+		super().run()
 		pygame.display.flip()
 
 class HiScoreMenu (Menu):
 	"""
-		The High Score Menu allows the player to view the recorded high scores in the file
-		hiscore.dat, segregated by game time and arranged by score. Time played and number 
-		of lines cleared are also displayed, along with the name of the score setter.
+	The High Score Menu allows the player to view the recorded high scores in the file
+	hiscore.dat, segregated by game time and arranged by score. Time played and number 
+	of lines cleared are also displayed, along with the name of the score setter.
 
-		Its selections are just switching between the scoreboards of the three different game modes.
+	Its selections are just switching between the scoreboards of the three different game modes.
 	"""
 	def __init__ (self, user):
 		bg = pygame.Surface((700, 480))
 		bg.fill((64, 192, 128))
-		super(HiScoreMenu, self).__init__(user, bg, midbottom = (s_rect.centerx, s_rect.bottom - 25))
+		super().__init__(user, bg, midbottom = (s_rect.centerx, s_rect.bottom - 25))
 		self.font = pygame.font.SysFont(None, 30)
 
 		self.selections = [[MenuOption(self, 'arcade', None, s_rect.topright)],
@@ -178,14 +178,14 @@ class HiScoreMenu (Menu):
 		self.set_range()
 
 	def eval_input (self):
-		event = super(HiScoreMenu, self).eval_input()
+		event = super().eval_input()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_x or event.key == pygame.K_ESCAPE:
 				self.user.state = 'main_menu'
 
 	@Menu.render
 	def display_scores (self, surf):
-		self.render_text(self.get_selected(*self.selection).action.capitalize() + ' Mode', (0, 0, 0), surf, midtop = (self.rect.width / 2, 30))
+		self.render_text(self.select(*self.selection).action.capitalize() + ' Mode', (0, 0, 0), surf, midtop = (self.rect.width / 2, 30))
 		self.render_text('Name:', (0, 0, 0), surf, topleft = (25, 70))
 		self.render_text('Score:', (0, 0, 0), surf, topleft = (185, 70))
 		self.render_text('Lines:', (0, 0, 0), surf, topleft = (390, 70))
@@ -200,7 +200,7 @@ class HiScoreMenu (Menu):
 	def run (self):
 		menu_bg.draw(screen)
 		self.draw(screen)
-		super(HiScoreMenu, self).run()
+		super().run()
 		self.display_scores()
 		pygame.display.flip()
 
@@ -214,7 +214,7 @@ class PauseMenu (Menu):
 		self.pause_bg = pygame.Surface(screen.get_size())
 		bg = pygame.Surface((250, 300))
 		bg.fill((0, 255, 0))
-		super(PauseMenu, self).__init__(user, bg, center = s_rect.center)
+		super().__init__(user, bg, center = s_rect.center)
 		
 		tmargin = 20
 		hmargin = 15
@@ -232,22 +232,22 @@ class PauseMenu (Menu):
 		self.pause_bg.blit(bg, (0, 0))
 
 	def eval_input (self):
-		event = super(PauseMenu, self).eval_input()
+		event = super().eval_input()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
-				if self.get_selected(*self.selection).action == 'resume':
+				if self.select(*self.selection).action == 'resume':
 					self.user.state = 'in_game'
 					pygame.mixer.music.unpause()
 					self.reset()
-				if self.get_selected(*self.selection).action == 'restart':
+				if self.select(*self.selection).action == 'restart':
 					self.user.state = 'in_game'
 					self.user.reset()
 					self.game.set_data()
 					restart_music()
 					self.reset()
-				elif self.get_selected(*self.selection).action == 'options':
+				elif self.select(*self.selection).action == 'options':
 					pass
-				elif self.get_selected(*self.selection).action == 'quit':
+				elif self.select(*self.selection).action == 'quit':
 					self.user.state = 'main_menu'
 					self.user.reset()
 					self.game.set_data()
@@ -258,18 +258,18 @@ class PauseMenu (Menu):
 	def run (self):
 		screen.blit(self.pause_bg, (0, 0))
 		self.draw(screen)
-		super(PauseMenu, self).run()
+		super().run()
 		pygame.display.flip()
 
 class SaveMenu (Menu):
 	"""
-		SaveMenu prompts the player to save a name to be attached to a high score, 
-		if they would have a high score that beats one on the record.
+	SaveMenu prompts the player to save a name to be attached to a high score, 
+	if they would have a high score that beats one on the record.
 	"""
 	def __init__(self, user):
 		bg = pygame.Surface((500, 150))
 		bg.fill((12, 135, 205))
-		super(SaveMenu, self).__init__(user, bg, center = s_rect.center)
+		super().__init__(user, bg, center = s_rect.center)
 		self.name = u''
 		self.placestring = '10th'
 
@@ -289,7 +289,7 @@ class SaveMenu (Menu):
 		if event.type == pygame.QUIT:
 			self.user.state = 'quit'
 		if event.type == pygame.KEYDOWN:
-			if ((event.key >= pygame.K_a and event.key <= pygame.K_z) or (event.key == pygame.K_SPACE)) and len(self.name) < 8:
+			if ((pygame.K_a <= event.key <= pygame.K_z) or (event.key == pygame.K_SPACE)) and len(self.name) < 8:
 				self.name += event.unicode
 			elif event.key == pygame.K_BACKSPACE:
 				self.name = self.name[:-1]
@@ -328,13 +328,13 @@ class SaveMenu (Menu):
 
 class LossMenu (Menu):
 	"""
-		When you lose the game, this menu pops up to show your score and let you try for a higher one.
+	When you lose the game, this menu pops up to show your score and let you try for a higher one.
 	"""
 	def __init__ (self, user):
 		self.loss_bg = pygame.Surface(screen.get_size())
 		bg = pygame.Surface((250, 300))
 		bg.fill((127, 127, 0))
-		super(LossMenu, self).__init__(user, bg, center = s_rect.center)
+		super().__init__(user, bg, center = s_rect.center)
 
 		tmargin = 20
 		hmargin = 15
@@ -352,18 +352,18 @@ class LossMenu (Menu):
 		self.loss_bg.blit(bg, (0, 0))
 
 	def eval_input (self):
-		event = super(LossMenu, self).eval_input()
+		event = super().eval_input()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
-				if self.get_selected(*self.selection).action == 'restart':
+				if self.select(*self.selection).action == 'restart':
 					self.user.state = 'in_game'
 					self.user.reset()
 					self.game.set_data()
 					restart_music()
 					self.reset()
-				elif self.get_selected(*self.selection).action == 'options':
+				elif self.select(*self.selection).action == 'options':
 					pass
-				elif self.get_selected(*self.selection).action == 'quit':
+				elif self.select(*self.selection).action == 'quit':
 					self.user.state = 'main_menu'
 					self.user.reset()
 					self.game.set_data()
@@ -378,14 +378,14 @@ class LossMenu (Menu):
 		screen.blit(self.loss_bg, (0, 0))
 		self.draw(screen)
 		self.rendered_text()
-		super(LossMenu, self).run()
+		super().run()
 		pygame.display.flip()
 
 class OptionMenu (Menu):
 	"""
-		The Options Menu allows the user to edit game settings for more convenient play.
+	The Options Menu allows the user to edit game settings for more convenient play.
 
-		The selections of this menu are special, and change the states of global variables.
+	The selections of this menu are special, and change the states of global variables.
 	"""
 	def __init__(self, user):
 		pass

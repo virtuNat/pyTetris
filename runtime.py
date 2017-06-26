@@ -91,15 +91,15 @@ class FreeSprite (pygame.sprite.Sprite):
 		for point, coord in anchors.items():
 			setattr(self.rect, point, coord)
 
-	def move_rt (self, speed, angle):
+	def move_rt (self, speed, angle, **anchors):
 		# Convert to rectangular coordinates and add the offset.
 		self.pos = self.pos[0] + speed * cos(angle), self.pos[1] + speed * sin(angle)
-		self.set(center = self.pos)
+		self.set(**anchors)
 
-	def move_xy (self, x, y):
+	def move_xy (self, x, y, **anchors):
 		# Add the offset.
 		self.pos = self.pos[0] + x, self.pos[1] + y
-		self.set(center = self.pos)
+		self.set(**anchors)
 
 	def move_to (self, dest, speed, **anchor):
 		# Moves pos attribute towards a target point at a certain speed.
@@ -109,7 +109,7 @@ class FreeSprite (pygame.sprite.Sprite):
 			self.pos = dest
 		self.set(**anchor)
 
-	def animate (self):
+	def animate (self, *args, **kwargs):
 		# So no exception is thrown when attempting to animate combinations of FreeSprites and AnimatedSprites.
 		pass
 
@@ -147,16 +147,20 @@ class AnimatedSprite (FreeSprite):
 		# If you want the animation to loop indefinitely, use it inside a looped if statement that replaces 
 		# the generator object with a new one if True.
 		yield True
-
-	def animate (self):
-		# Scrolls through the sprite sheet. Changing the animation row/col will be handled by the sprite itself.
-		# Does not call AnimatedSprite.draw().
+	
+	def __next__ (self):
 		if self.reverse:
 			if self.frame == 0: self.frame = self.frames - 1
 			else: self.frame -= 1
 		else:
 			if self.frame == self.frames - 1: self.frame = 0
 			else: self.frame += 1
+		return self.frame
+
+	def animate (self):
+		# Scrolls through the sprite sheet. Changing the animation row/col will be handled by the sprite itself.
+		# Does not call AnimatedSprite.draw().
+		next(self)
 		self.set_clip()
 
 class FreeGroup (pygame.sprite.Group):
@@ -198,7 +202,7 @@ class MenuOption (AnimatedSprite):
 		self.menu = menu
 		self.action = action
 
-		if relative: self.set(top = self.menu.rect.top + self.rect.top, left = self.menu.rect.left + self.rect.left)
+		if relative: self.set(topleft = (self.menu.rect.left + self.rect.left, self.menu.rect.top + self.rect.top))
 
 		if text is not None:
 			self.text = self.menu.font.render(text, 0, pygame.Color(255, 255, 255))
@@ -212,7 +216,7 @@ class MenuOption (AnimatedSprite):
 		self.selected = state
 
 	def update (self, surf = screen):
-		self.set_clip(1 if self.selected else 0)
+		self.set_clip(self.selected)
 		self.draw(surf)
 		if self.text is not None:
 			self.text_rect.center = self.rect.center
@@ -249,7 +253,7 @@ class Menu (AnimatedSprite):
 		self.shortime = 6
 		self.movetime = self.basetime
 
-		self.get_selected(*self.selection).set_select(False)
+		self.select(*self.selection).set_select(False)
 
 	def set_range (self):
 		# Initializes the range value of the menu selections. Safe to call more than once on one initialization.
@@ -258,11 +262,11 @@ class Menu (AnimatedSprite):
 
 	def reset (self):
 		# Resets the menu 'cursor' back to the default.
-		self.get_selected(*self.selection).set_select(False)
+		self.select(*self.selection).set_select(False)
 		self.selection = [0, 0]
-		self.get_selected(*self.selection).set_select(True)
+		self.select(*self.selection).set_select(True)
 
-	def get_selected(self, i, j):
+	def select(self, i, j):
 		# Easy way of getting the current selection.
 		return self.selections[i][j]
 
@@ -330,7 +334,7 @@ class Menu (AnimatedSprite):
 		# Update the movement values per frame.
 		self.eval_input()
 		# Move selection.
-		self.get_selected(*self.selection).set_select(False)
+		self.select(*self.selection).set_select(False)
 		if self.left:
 			if not self.moved:
 				self.selection[0] -= 1
@@ -374,7 +378,7 @@ class Menu (AnimatedSprite):
 			elif self.selection[i] < 0:
 				self.selection[i] = self.range[i] - 1
 		# print self.selection
-		self.get_selected(*self.selection).set_select(True)
+		self.select(*self.selection).set_select(True)
 		for items in self.selections:
 			for item in items:
 				item.update(surf)
