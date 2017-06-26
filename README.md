@@ -1,55 +1,19 @@
-# pyTetris
+## pyTetris
 
-pygame implementation of a Tetris clone.
+###### pygame implementation of a Tetris clone.
 
-PreDev 0.0: 
-- Implemented menu classes.
-- Created basic runtime engine for python games.
-- Created Block class, representing a struct of a single tetris tile.
-- Created Shape class, representing a bunch of Blocks acting as one.
-- Created Grid class, allowing blocks from tetriminos to exist in the grid after being dropped.
+#### Original Version Features:
+- Working keyboard-operated menus.
+- Basic grid implemented that uses invisible block padding to emulate wall collision, and a simply (although buggy) line clear system in either naive or sticky methods.
+- Collision detection between blocks in the grid, and the blocks in the active tetrimino.
+- Rotation and tetrimino generation work according to the SRS guideline.
+- The active tetrimino can be held and swapped.
+- The active tetrimino has a ghost to aid player move prediction.
+- Both soft drop and hard drop can be used to make the active tetrimino fall faster.
+- The game can be paused (though not during line clearing).
+- The game data can be reset and replayed.
 
-PreDev 0.1: 
-- Fixed bug where the display would not align to the blocks properly.
-- Increased block size to 25x25px from 20x20px.
-- Implemented naive gravity.
-
-PreDev 0.2: 
-- Created invisible wall of blocks in the grid to prevent the necessity of wall and floor collision checks.
-- Optimized gravity to only require block collision checks.
-- Implemented rudimentary block collision detection between active tetrimino and grid.
-- Implemented translation and rotation controls.
-- Implemented SRS random tetromino generation system.
-
-PreDev 0.3: 
-- Reworked tetrimino evaluation, separating it into rotation, translation, and gravity components.
-- Fixed bug where tetriminos moved by shifting or gravity would intersect with other blocks.
-
-InDev 0.1.0: 
-- Implemented Akira wall kick table for rotations.
-- Implemented Hold function.
-- Padded the invisible block wall by one more so the I tetromino did not cause bugs when rotated into wall.
-
-InDev 0.1.1: 
-- Implemented ghost tetrimino and hard drop.
-- Implemented soft drop.
-
-InDev 0.1.2: 
-- Implemented Pause Menu.
-- Optimized game code to allow game resets.
-
-InDev 0.1.3: 
-- Implemented naive line clear.
-- Implemented sticky line clear and added block textures.
-
-InDev 0.1.4:
-- Implemented cascade line clear.
-- Fixed bug in Menu system that caused the selections to reset every frame.
-
-InDev 0.2.0: 
-- Optimized code for Grid class line clear methods, uniting them under a single function.
-
-# Repository starts here:
+#### Repository starts here:
 
 InDev 0.2.1: 
 - Fixed bug in line clearing that caused block domains to fall "through" each other when they should not.
