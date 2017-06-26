@@ -21,4 +21,6 @@ This is intended to be a Tetris clone.
 - A bug occurs when the player holds either the shift left or shift right keys to "stick" the active piece against a wall or the grid blocks will cause it to fall slower.
 - The score system has a weird bug that causes it to oversize certain cascade scores in arcade and free mode.
 
+#### Current Version: 1.1.4
+
 Let me know if there are any other problems!
