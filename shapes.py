@@ -38,7 +38,7 @@ class Block (FreeSprite):
 			block.color = self.color
 			block.links = self.links
 			block.ghost = self.ghost
-			block.update = Block(self.color, linkrule, ghost)
+			block.update(self.color, linkrule, ghost)
 
 	def update (self, color, linkrule = True, ghost = False):
 		# Evaluate the graphic to be used. Not much else to update in Block Sprites.
