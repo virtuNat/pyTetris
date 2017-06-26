@@ -1,6 +1,6 @@
 ## pyTetris
 
-###### pygame implementation of a Tetris clone.
+#### PyGame implementation of a Tetris clone.
 
 #### Original Version Features:
 - Working keyboard-operated menus.
@@ -13,38 +13,33 @@
 - The game can be paused (though not during line clearing).
 - The game data can be reset and replayed.
 
-#### Repository starts here:
-
-InDev 0.2.1: 
-- Fixed bug in line clearing that caused block domains to fall "through" each other when they should not.
-
-InDev 0.2.2: 
-- Implemented rudimentary scoring system. 
-- Fixed bug in cascade clearing where some block domains did not fall when they should.
+#### Repository updates start here:
 
 InDev 0.2.3: 
-- Expanded score system.
+- Implemented rudimentary scoring system. 
+- Fixed bug in cascade clearing where some block domains did not fall when they should.
+- Fixed bug in line clearing that caused block domains to fall "through" each other when they should not.
 
 InDev 0.2.4: 
 - Fixed bug where rotating a piece allowed players to suspend it indefinitely.
 - Fixed bug where I piece still caused crashes when wall-kicked from the right side due to block iteration order by padding the right side by one more.
-- Optimized code per frame, now Grid.clear_lines() isn't run every frame, and the game doesn't wait for the frame counter to roll over when a piece is dropped. 
+- Made game speed consistent per frame, and reduced the number of unnecessary calls made.
 - Fixed scoring system bugs.
 
 InDev 0.2.5:
-- Implemented proper handling of losing.
-- Rebalanced the score values to more closely match standards.
+- The player can now lose properly when the block stack fills up all the way.
+- Rebalanced the score values to more closely resemble Tetris standards.
 - Implemented Delayed Auto-Shifting.
-- Streamlined the running code, making it more readable and more efficient, undoing PreDev 0.3's separation.
+- Streamlined the running code, making it more readable and efficient.
 
 InDev 0.2.6:
 - Implemented tetrimino spawn delay.
 - Allowed DAS to charge during spawn delay.
-- Fixed bug that caused ghost piece to lag behind by one frame.
+- Fixed bug that caused ghost to lag behind the active tetrimino by one frame.
 
 InDev 0.2.7:
 - Allowed swapping held piece during spawn delay.
-- Fixed bug where piece did not evaluate properly after spawn delay.
+- Fixed bug where the tetrimino did not evaluate properly after spawn delay.
 - Soft locking time increased to normal locking time.
 - Rebalanced tetrises to be more point-worthy and chains less point-worthy.
 
@@ -84,16 +79,15 @@ Alpha 1.1.0:
 - Added a Tetris theme remix to be played in-game.
 - Added a placeholder playing field texture to complement the rudimentary HUD design.
 
-Alpha 1.1.1:
-- Minor performance improvement with line-clearing, created an explicit Grid.paste_shape() function for ease.
-- Fixed inconsistencies with level assignments in arcade mode.
-
 Alpha 1.1.2:
-- Moved to python 3.4 syntax.
-- Optimized base class code, creating FreeSprite from PositionedSurface, making it easier to add new features and implement animation via the AnimatedSprite class.
-- Fixed a bug arisen from the move that caused a graphical error to occur when clearing lines.
+- Moved to python 3.x syntax.
+- Optimized base class code, creating FreeSprite from PositionedSurface (inheriting from pygame.sprite.Sprite but with the same functionality), making it easier to add new features and implement animation via the AnimatedSprite class.
+- Improved line-clear performance and made Grid class code more readable.
+- Fixed a bug where the textures would mess up during line clearing.
+- Fixed arcade mode level bugs.
 
-Alpha 1.1.3:
+Alpha 1.1.4:
 - Fixed a bug where the line clearing would cause an infinite loop on sticky but not cascade clearing.
 - Enabled pausing during line clear, turning Grid.clear_lines() into a generator, and optimizing its code in relation to the User object.
-- Updated several places where old syntax has become obsolete.
+- Replaced obsolete syntax.
+- Updated menu logic.
