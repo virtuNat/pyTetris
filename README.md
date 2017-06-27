@@ -20,7 +20,9 @@ This is intended to be a Tetris clone.
 ### Issue Tracker:
 - A bug occurs when the player holds either the shift left or shift right keys to "stick" the active piece against a wall or the grid blocks will cause it to fall slower.
 - The score system has a weird bug that causes it to oversize certain cascade scores in arcade and free mode.
+- The score file is prone to corruption and has no way of ensuring its validity.
+- When plugging in an 0xrrggbb hexstring into render_text from engine.Tetris, it misformats it into 0x00ggbbaa for no apparent reason.
 
-#### Current Version: 1.1.4
+#### Current Version: 1.1.5
 
 Let me know if there are any other problems!
