@@ -97,3 +97,4 @@ Alpha 1.1.5:
 - Updated the menu-switch system such that it now uses eval() to simplify the running loop code tremendously.
 - Fixed menu methods and attribute names for both efficiency and logical sense.
 - Made render_text its own function, and changed all color references into hexstrings.
+- Fixed ghost textures for increased visibility.
