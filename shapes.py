@@ -2,13 +2,14 @@
 try:
 	from runtime import *
 except ImportError as error:
-	print("Runtime has fucking failed:", error)
+	print("Runtime has fucking failed:")
+	raise error
 
 block_source = load_image('tileset.png')
-grid_source = load_image('display.png', colorkey = (0, 0, 0))
+grid_source = load_image('display.png', colorkey = 0x000000)
 grid_rect = grid_source.get_rect(midbottom = (s_rect.centerx, s_rect.bottom - 20))
 game_bg = pygame.Surface(screen.get_size())
-game_bg.fill((0, 0, 0))
+game_bg.fill(0x000000)
 
 class Block (FreeSprite):
 	"""
@@ -66,7 +67,7 @@ class Block (FreeSprite):
 			else: raise IndexError('Having more than three links on a block does not a tetrimino make.')
 		else: form = 0
 		self.image = block_source.subsurface(pygame.Rect(color, form * 25, 25, 25))
-		if ghost: self.image.set_alpha(191)
+		# if ghost: self.image.set_alpha(191)
 
 class Shape (FreeGroup):
 	"""

@@ -6,14 +6,16 @@
 try:
 	import os, sys
 	import math, random
-	import pygame, pygame.mixer
+	import pygame
+	import pygame.mixer as mixer
 	import struct
 	import hashlib
 except ImportError as error:
-	print("Something screwey happened:", error)
+	print("A module must've shat itself:")
+	raise error
 
 pygame.init()
-pygame.mixer.init(buffer = 1024)
+mixer.init(buffer = 1024)
 screen = pygame.display.set_mode((800, 600), pygame.HWSURFACE | pygame.DOUBLEBUF)
 s_rect = screen.get_rect()
 pygame.display.set_caption('pyTetris')
@@ -63,14 +65,25 @@ def load_image (name, alpha = None, colorkey = None):
 		image = image.convert_alpha()
 	return image
 
+def render_text (obj, text, color, surf = screen, **anchors):
+	# Takes an object with a font attribute, and creates a text surface that it blits to a given surface.
+	# Can be added to any class as a class method, provided that class instances have a font attribute.
+	tsurf = obj.font.render(text, 0, pygame.Color(color))
+	surf.blit(tsurf, tsurf.get_rect(**anchors))
+
 def load_music(name):
 	# Loads a music file into the stream.
-	return pygame.mixer.music.load(os.path.join('music', name))
+	return mixer.music.load(os.path.join('music', name))
 
 def restart_music():
 	# Restarts the current music in the stream in one statement.
-	pygame.mixer.music.rewind()
-	pygame.mixer.music.play()
+	mixer.music.rewind()
+	mixer.music.play()
+
+def quit ():
+	# Quick alias to the cleanup fucntions.
+	pygame.quit()
+	sys.exit(1)
 
 class FreeSprite (pygame.sprite.Sprite):
 	"""
@@ -88,17 +101,24 @@ class FreeSprite (pygame.sprite.Sprite):
 
 	def set (self, **anchors):
 		# Move the sprite's rect to a coordinate given a point to anchor it to.
-		for point, coord in anchors.items():
-			setattr(self.rect, point, coord)
+		# If 'pos' is specified as an anchor, use the sprite's current pos attribute as the anchor.
+		for point, anchor in anchors.items():
+			if anchor == 'pos':
+				anchor = self.pos
+			setattr(self.rect, point, anchor)
 
 	def move_rt (self, speed, angle, **anchors):
 		# Convert to rectangular coordinates and add the offset.
 		self.pos = self.pos[0] + speed * cos(angle), self.pos[1] + speed * sin(angle)
+		# Anchor to center of image rectangle by default.
+		if len(anchors) == 0: anchors = dict(center = self.pos)
 		self.set(**anchors)
 
 	def move_xy (self, x, y, **anchors):
 		# Add the offset.
 		self.pos = self.pos[0] + x, self.pos[1] + y
+		# Anchor to center of image rectangle by default.
+		if len(anchors) == 0: anchors = dict(center = self.pos)
 		self.set(**anchors)
 
 	def move_to (self, dest, speed, **anchor):
@@ -107,6 +127,8 @@ class FreeSprite (pygame.sprite.Sprite):
 			self.pos = self.pos[0] + speed * get_cos(self.pos, dest), self.pos[1] + speed * get_sin(self.pos, dest)
 		else:
 			self.pos = dest
+		# Anchor to center of image rectangle by default.
+		if len(anchor) == 0: anchor = dict(center = self.pos)
 		self.set(**anchor)
 
 	def animate (self, *args, **kwargs):
@@ -149,7 +171,7 @@ class AnimatedSprite (FreeSprite):
 		yield True
 
 	def __iter__ (self):
-		# Initializes the sprite as an iterator.
+		# Creates a generator that animates the sprite via basic scrolling.
 		if self.reverse:
 			self.frame = self.frames - 1
 		else: self.frame = 0
@@ -167,9 +189,11 @@ class AnimatedSprite (FreeSprite):
 			else: self.frame += 1
 		self.set_clip()
 
-	def animate (self):
-		# Alias to the class's __next__ method which does the scrolling animation.
-		next(self)
+	def animate (self, loop = False):
+		# Auto-iterates through a scrolling animation, allowing a simple loop call for a looping animation.
+		try: next(self)
+		except StopIteration:
+			if loop: iter(self)
 
 class FreeGroup (pygame.sprite.Group):
 	"""
@@ -217,14 +241,10 @@ class MenuOption (AnimatedSprite):
 			self.text_rect = self.text.get_rect()
 		else: self.text = None
 
-		self.selected = False
-
-	def set_select (self, state):
-		# Set selection state to True or False.
-		self.selected = state
+		self.is_selected = False
 
 	def update (self, surf = screen):
-		self.set_clip(self.selected)
+		self.set_clip(self.is_selected)
 		self.draw(surf)
 		if self.text is not None:
 			self.text_rect.center = self.rect.center
@@ -235,6 +255,9 @@ class Menu (AnimatedSprite):
 	The Menu class is the superclass to all menu objects, and will handle basic menu operations, 
 	such as moving along selections, positioning, and committing.
 	"""
+
+	# def __new__ (cls, bases, attrs): return type(cls, bases, attrs)
+	# While it may be tempting to use Menu as a metaclass, there is no need for such specific behavioral changes during construction.
 
 	def __init__ (self, user, bg = None, rect = None, **pos):
 		if bg is None:
@@ -261,27 +284,33 @@ class Menu (AnimatedSprite):
 		self.shortime = 6
 		self.movetime = self.basetime
 
-		self.select(*self.selection).set_select(False)
+	def __getattr__ (self, name):
+		if name == 'selected':
+			# Alias to currently selected item.
+			return self.select()
 
 	def set_range (self):
 		# Initializes the range value of the menu selections. Safe to call more than once on one initialization.
 		# Note that the menu selections are assumed to be rectangular in nature.
 		self.range = [len(self.selections), len(self.selections[0])]
 
+	def select (self, addrs = None):
+		# Easy way of getting the current selection.
+		if addrs is None: addrs = self.selection
+		return self.selections[addrs[0]][addrs[1]]
+
+	def set_select (self, state, addrs = None):
+		# Set the indicated item's selected state.
+		self.select(addrs).is_selected = state
+
 	def reset (self):
 		# Resets the menu 'cursor' back to the default.
-		self.select(*self.selection).set_select(False)
+		self.set_select(False)
 		self.selection = [0, 0]
-		self.select(*self.selection).set_select(True)
+		self.set_select(True)
 
-	def select(self, i, j):
-		# Easy way of getting the current selection.
-		return self.selections[i][j]
-
-	def render_text (self, text, color, surf = screen, **pos):
-		# Render a message to the screen.
-		tsurf = self.font.render(text, 0, color)
-		surf.blit(tsurf, tsurf.get_rect(**pos))
+	# Refer to the function of the same name above.
+	render_text = render_text
 
 	@staticmethod
 	def render (method):
@@ -303,7 +332,6 @@ class Menu (AnimatedSprite):
 
 			screen.blit(rsurf, self.rect)
 		return wrapper
-
 
 	def eval_input (self):
 		# Evaluate user input. Handling of specific options is menu-specific.
@@ -342,7 +370,7 @@ class Menu (AnimatedSprite):
 		# Update the movement values per frame.
 		self.eval_input()
 		# Move selection.
-		self.select(*self.selection).set_select(False)
+		self.set_select(False)
 		if self.left:
 			if not self.moved:
 				self.selection[0] -= 1
@@ -386,7 +414,7 @@ class Menu (AnimatedSprite):
 			elif self.selection[i] < 0:
 				self.selection[i] = self.range[i] - 1
 		# print self.selection
-		self.select(*self.selection).set_select(True)
+		self.set_select(True)
 		for items in self.selections:
 			for item in items:
 				item.update(surf)

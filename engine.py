@@ -1,6 +1,6 @@
 # [ ] square bracket copy reference, { } curly braces reference
 try:
-	from menu import *
+	import menu
 	from shapes import *
 except ImportError as error:
 	print("One of the modules fucked up:")
@@ -65,7 +65,7 @@ class User (object):
 
 	def eval_drop_score (self, posdif = 0):
 		# Add score value when piece is dropped.
-		if self.state != 'loser':
+		if self.state != 'loss_menu':
 			if self.hard_flag:
 				self.add_score(self.drop_score + (self.dist_factor * posdif))
 				self.hard_flag = False
@@ -134,13 +134,6 @@ class Tetris (object):
 		self.grid = Grid(user)
 		self.grid.game = self
 		self.set_data()
-
-		print("LEFT and RIGHT arrow keys to shift tetrimino left and right.")
-		print("DOWN arrow key to speed up falling tetrimino.")
-		print("Z or LCTRL keys to rotate tetrimino counter-clockwise. ")
-		print("X or UP keys to rotate tetrimino clockwise.")
-		print("SPACE key to drop tetrimino, and LSHIFT to hold tetrimino.")
-		print("ESCAPE key to pause.")
 
 	def set_data (self):
 		# Initializes the game data.
@@ -248,7 +241,7 @@ class Tetris (object):
 		event = pygame.event.poll()
 		if (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE) or not pygame.key.get_focused():
 			# Pause game when the user presses the pause key, or when the window loses focus.
-			pygame.mixer.music.pause()
+			mixer.music.pause()
 			self.paused = True
 
 		if event.type == pygame.QUIT: # Exits the game.
@@ -484,7 +477,7 @@ class Tetris (object):
 		self.ghostshape = Shape()
 		# Prevent a bug where losing would force pieces to spawn.
 		self.grav_frame = 0
-		if self.user.state == 'loser':
+		if self.user.state == 'loss_menu':
 			self.grav_frame = 30
 
 	def eval_block (self):
@@ -537,19 +530,19 @@ class Tetris (object):
 						break
 				else: trapped = False
 			# If the shape is blocked and can't clear a line, game over.
-			if trapped: self.user.state = 'loser'
+			if trapped: self.user.state = 'loss_menu'
 			self.freeshape.copy_to(self.newshape, self.user.linktiles)
 		else:
-			self.user.state = 'loser'
+			self.user.state = 'loss_menu'
 
 	def eval_loss (self):
 		# When a loss occurs, compare current score to scorefile list.
-		if self.user.state == 'loser':
+		if self.user.state == 'loss_menu':
 			if self.user.gametype == 'arcade': g = 0
 			elif self.user.gametype == 'timed': g = 1
 			elif self.user.gametype == 'free': g = 2
 
-			_scorelist = decode_scores()[g]
+			_scorelist = menu.decode_scores()[g]
 			_i = 10
 			for i in range(9, -1, -1):
 				if _scorelist[i][1] < self.user.score:
@@ -560,10 +553,10 @@ class Tetris (object):
 						_i = i
 			if _i < 10:
 				self.save_menu.render_place(_i)
-				self.user.state = 'save_scores'
+				self.user.state = 'save_menu'
 
 			self.loss_menu.render_loss(screen)
-			pygame.mixer.music.fadeout(2500)
+			mixer.music.fadeout(2500)
 
 	def ramp_arcade (self, oldlevel):
 		# Manages the difficulty of arcade mode.
@@ -595,10 +588,10 @@ class Tetris (object):
 				elif self.user.levl >= 64: self.line_frame = 300
 			else: self.line_frame -= 1
 
-	def render_text (self, text, color, **pos):
-		# Render a message to the screen.
-		tsurf = self.font.render(text, 0, color)
-		screen.blit(tsurf, tsurf.get_rect(**pos))
+	def render_text (self, text, color, alpha = 255, surf = screen, **anchors):
+		# Alias to the render_text function.
+		# There's a weird bug that causes the color tag to be treated as 0x00ggbbaa instead of 0xrrggbbFF.
+		render_text(self, text, hex(int(color) * 256 + alpha), surf, **anchors)
 
 	def display (self):
 		# Display relevant stuff.
@@ -607,35 +600,35 @@ class Tetris (object):
 		talign = self.grid.rect.top + 177
 		spacing = 30
 		# Display current game mode.
-		self.render_text(self.user.gametype.capitalize() + ' Mode', (255, 255, 255), midtop = (s_rect.centerx, self.grid.rect.top + 15))
+		self.render_text(self.user.gametype.capitalize() + ' Mode', 0xFFFFFF, midtop = (s_rect.centerx, self.grid.rect.top + 15))
 		# Display current score.
-		self.render_text('Score:', (255, 255, 255), topleft = (lalign, talign))
-		self.render_text('{}'.format(self.user.score), (255, 255, 255), topright = (ralign, talign + spacing))
+		self.render_text('Score:', 0xFFFFFF, topleft = (lalign, talign))
+		self.render_text('{}'.format(self.user.score), 0xFFFFFF, topright = (ralign, talign + spacing))
 		# Display score from last clear.
-		self.render_text('Last Clear:', (255, 255, 255), topleft = (lalign, talign + spacing * 2))
+		self.render_text('Last Clear:', 0xFFFFFF, topleft = (lalign, talign + spacing * 2))
 		if self.clearing: 
-			self.render_text('{}'.format(self.user.predict_score(False)), (255, 255, 255), topright = (ralign, talign + spacing * 3))
-		else: 
-			self.render_text('{}'.format(self.user.last_score), (255, 255, 255), topright = (ralign, talign + spacing * 3))
+			self.render_text('{}'.format(self.user.predict_score(False)), 0xFFFFFF, topright = (ralign, talign + spacing * 3))
+		else:
+			self.render_text('{}'.format(self.user.last_score), 0xFFFFFF, topright = (ralign, talign + spacing * 3))
 		# Display total tiles cleared.
-		self.render_text('Lines Cleared:', (255, 255, 255), topleft = (lalign, talign + spacing * 4))
-		self.render_text('{}'.format(self.user.lines_cleared), (255, 255, 255), topright = (ralign, talign + spacing * 5))
+		self.render_text('Lines Cleared:', 0xFFFFFF, topleft = (lalign, talign + spacing * 4))
+		self.render_text('{}'.format(self.user.lines_cleared), 0xFFFFFF, topright = (ralign, talign + spacing * 5))
 		# Display game mode specific values.
 		if self.user.gametype == 'arcade':
-			self.render_text('Current Level:', (255, 255, 255), topleft = (lalign, talign + spacing * 6))
-			self.render_text('{}'.format(self.user.level), (255, 255, 255), topright = (ralign, talign + spacing * 7))
+			self.render_text('Current Level:', 0xFFFFFF, topleft = (lalign, talign + spacing * 6))
+			self.render_text('{}'.format(self.user.level), 0xFFFFFF, topright = (ralign, talign + spacing * 7))
 		elif self.user.gametype == 'timed':
-			self.render_text('Time Left:', (255, 255, 255), topleft = (lalign, talign + spacing * 6))
-			self.render_text('{}:{:02d}:{:02d}'.format(self.user.timer // 60000, self.user.timer // 1000 % 60, self.user.timer % 1000 // 10), (255, 255, 255), topright = (ralign, talign + spacing * 7))
+			self.render_text('Time Left:', 0xFFFFFF, topleft = (lalign, talign + spacing * 6))
+			self.render_text('{}:{:02d}:{:02d}'.format(self.user.timer // 60000, self.user.timer // 1000 % 60, self.user.timer % 1000 // 10), 0xFFFFFF, topright = (ralign, talign + spacing * 7))
 		
 		# Display active piece.
 		if self.entry_flag and not self.clearing: self.freeshape.draw()
 		# Display three next pieces.
-		self.render_text('Up Next:', (255, 255, 255), topleft = (584, self.grid.rect.top + 60))
+		self.render_text('Up Next:', 0xFFFFFF, topleft = (584, self.grid.rect.top + 60))
 		for i in range(3):
 			self.nextshapes[i].draw([592, self.grid.rect.top + 126 + (i * 87)], True)
 		# Display held piece.
-		self.render_text('Held:', (255, 255, 255), topleft = (162, self.grid.rect.top + 60))
+		self.render_text('Held:', 0xFFFFFF, topleft = (162, self.grid.rect.top + 60))
 		if self.storedshape is not None:
 			self.storedshape.draw([158, self.grid.rect.top + 126], True)
 
@@ -646,7 +639,7 @@ class Tetris (object):
 			self.shift_dir = '0'
 			self.paused = False
 			self.pause_menu.set_bg(screen)
-			self.user.state = 'paused'
+			self.user.state = 'pause_menu'
 
 	def run (self):
 		# Runs the game loop.
@@ -700,7 +693,7 @@ class Tetris (object):
 					self.user.timer -= clock.get_time()
 				else:
 					self.user.timer = 0
-					self.user.state = 'loser'
+					self.user.state = 'loss_menu'
 			else:
 				# Increment timer for non-timed modes so it could be appended to the high score.
 				self.user.timer += clock.get_time()
@@ -709,7 +702,34 @@ class Tetris (object):
 			self.clearing = next(self.line_clearer)
 		# Display heads-up information.
 		self.display()
-		self.eval_loss()			
+		self.eval_loss()
 		self.eval_pause()
 		# Refresh screen. There is not enough fast rendering to justify using update()
 		pygame.display.flip()
+
+def init ():
+	# Initialize game objects.
+	user = User()
+	play_menu = menu.PlayMenu(user)
+	score_menu = menu.HiScoreMenu(user)
+	pause_menu = menu.PauseMenu(user)
+	save_menu = menu.SaveMenu(user)
+	loss_menu = menu.LossMenu(user)
+	main_menu = menu.MainMenu(user, score_menu)
+	game = Tetris(user, pause_menu, save_menu, loss_menu)
+	# Some menus need to use game variables.
+	play_menu.game = pause_menu.game = loss_menu.game = game
+	
+	return dict(
+		clock = clock,
+		user = user,
+		main_menu = main_menu,
+		play_menu = play_menu,
+		# help_menu = help_menu,
+		score_menu = score_menu,
+		# settings = settings,
+		pause_menu = pause_menu,
+		save_menu = save_menu,
+		loss_menu = loss_menu,
+		game = game,
+		quit = quit)

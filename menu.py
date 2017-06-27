@@ -3,9 +3,10 @@ try:
 	from runtime import *
 except ImportError as error:
 	print("Runtime has fucking failed:", error)
+	raise error
 
 menu_bg = AnimatedSprite(pygame.Surface(screen.get_size()))
-menu_bg.image.fill((0, 128, 128))
+menu_bg.image.fill(0x008080)
 
 def gen_scorelists (name = 'hiscore.dat'):
 	# Sets a new hiscore file. Should only be used when the hiscore.dat file is missing or corrupted somehow.
@@ -13,7 +14,7 @@ def gen_scorelists (name = 'hiscore.dat'):
 	with open(name, 'wb') as _scorefile:
 		for i in range(3):
 			for j in range(10):
-				score = list('Pajitnov') + [
+				score = [c.encode() for c in 'Pajitnov'] + [
 					(15000 + 5000 * (2 - i)) * (10 - j),
 					10 * (10 - j),
 					30000 if i == 1 else 2500 * (10 - j)]
@@ -38,7 +39,7 @@ def decode_scores (splitname = False, name = 'hiscore.dat'):
 		gen_scorelists()
 		return decode_scores()
 
-def encode_scores (gametype = 'arcade', scorelist = list('Pajitnov') + [4250000, 6400, 1000000], name = 'hiscore.dat'):
+def encode_scores (gametype = 'arcade', scorelist = [c.encode() for c in 'Pajitnov'] + [4250000, 6400, 1000000], name = 'hiscore.dat'):
 	# Writes a new score to the high scores file.
 	if gametype == 'arcade': gametype = 0
 	elif gametype == 'timed': gametype = 1
@@ -56,45 +57,49 @@ def encode_scores (gametype = 'arcade', scorelist = list('Pajitnov') + [4250000,
 		_scorelists[gametype].pop()
 		_scorelists = _scorelists[0] + _scorelists[1] + _scorelists[2]
 		for score in _scorelists:
+			print(score)
 			_scorefile.write(struct.pack('>ccccccccQLL', *score))
 
 class MainMenu (Menu):
 	""" 
-		The MainMenu object represents the main menu of the game.
+	The MainMenu object represents the main menu of the game.
 
-		The player is capable of starting the game selection, viewing the high score tables, and 
-		changing the options.
+	The player is capable of starting the game selection, viewing the high score tables, and 
+	changing the options.
 	"""
 
 	def __init__ (self, user, score_menu):
 		bg = pygame.Surface((210, 300))
-		bg.fill((0, 255, 0))
+		bg.fill(0x00FF00)
 		super().__init__(user, bg, midtop = (screen.get_width() / 2, 250))
 		self.score_menu = score_menu
 
 		hmargin = 15 # horizontal margin in pixels
 		tmargin = 20 # top margin in pixels
 		spacing = 5 # space between selections in pixels
-		height = 60 # height of selections in pixels
+		height = (self.rect.height - 2 * tmargin - 4 * spacing) / 5 # height of selections in pixels
 
-		self.selections = [[MenuOption(self, 'play', 'Start Game', (hmargin, tmargin), (self.rect.width - 2 * hmargin, height)), 
-							MenuOption(self, 'hiscore', 'High Scores', (hmargin, tmargin + spacing + height), (self.rect.width - 2 * hmargin, height)), 
-							MenuOption(self, 'options', 'Options', (hmargin, tmargin + 2 * (spacing + height)), (self.rect.width - 2 * hmargin, height)), 
-							MenuOption(self, 'quit', 'Quit', (hmargin, tmargin + 3 * (spacing + height)), (self.rect.width - 2 * hmargin, height))]]
+		self.selections = [[MenuOption(self, 'play', 'Start Game', (hmargin, tmargin), (self.rect.width - 2 * hmargin, height)),
+							MenuOption(self, 'help', 'How to Play', (hmargin, tmargin + (spacing + height)), (self.rect.width - 2 * hmargin, height)), 
+							MenuOption(self, 'hiscore', 'High Scores', (hmargin, tmargin + 2 * (spacing + height)), (self.rect.width - 2 * hmargin, height)), 
+							MenuOption(self, 'settings', 'Game Settings', (hmargin, tmargin + 3 * (spacing + height)), (self.rect.width - 2 * hmargin, height)),
+							MenuOption(self, 'quit', 'Quit', (hmargin, tmargin + 4 * (spacing + height)), (self.rect.width - 2 * hmargin, height))]]
 		self.set_range()
 
 	def eval_input (self):
 		event = super().eval_input()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
-				if self.select(*self.selection).action == 'play':
+				if self.selected.action == 'play':
 					self.user.state = 'play_menu'
-				elif self.select(*self.selection).action == 'hiscore':
-					self.user.state = 'view_scores'
-					self.score_menu.scorelist = decode_scores()
-				elif self.select(*self.selection).action == 'options':
+				elif self.selected.action == 'help':
 					pass
-				elif self.select(*self.selection).action == 'quit':
+				elif self.selected.action == 'hiscore':
+					self.user.state = 'score_menu'
+					self.score_menu.scorelist = decode_scores()
+				elif self.selected.action == 'options':
+					pass
+				elif self.selected.action == 'quit':
 					self.user.state = 'quit'
 
 	def run (self):
@@ -121,7 +126,7 @@ class PlayMenu (Menu):
 
 	def __init__(self, user):
 		bg = pygame.Surface((620, 300))
-		bg.fill((0, 255, 64))
+		bg.fill(0x00FF40)
 		super().__init__(user, bg, midtop = (screen.get_width() / 2, 250))
 
 		hmargin = 20
@@ -138,16 +143,16 @@ class PlayMenu (Menu):
 		event = super().eval_input()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
-				if self.select(*self.selection).action == 'arcade':
+				if self.selected.action == 'arcade':
 					self.user.gametype = 'arcade'
-				elif self.select(*self.selection).action == 'timed':
+				elif self.selected.action == 'timed':
 					self.user.gametype = 'timed'
-				elif self.select(*self.selection).action == 'free':
+				elif self.selected.action == 'free':
 					self.user.gametype = 'free'
 
-				self.user.state = 'in_game'
+				self.user.state = 'game'
 				self.game.set_data()
-				pygame.mixer.music.play()
+				mixer.music.play()
 				self.reset()
 			elif event.key == pygame.K_x or event.key == pygame.K_ESCAPE:
 				self.user.state = 'main_menu'
@@ -157,6 +162,18 @@ class PlayMenu (Menu):
 		self.draw(screen)
 		super().run()
 		pygame.display.flip()
+
+class HelpMenu (Menu):
+	"""
+	LEFT and RIGHT arrow keys to shift tetrimino left and right.
+	DOWN arrow key to speed up falling tetrimino.
+	Z or LCTRL keys to rotate tetrimino counter-clockwise. 
+	X or UP keys to rotate tetrimino clockwise.
+	SPACE key to drop tetrimino, and LSHIFT to hold tetrimino.
+	ESCAPE key to pause.
+	"""
+	def __init__(self, user):
+		pass		
 
 class HiScoreMenu (Menu):
 	"""
@@ -168,7 +185,7 @@ class HiScoreMenu (Menu):
 	"""
 	def __init__ (self, user):
 		bg = pygame.Surface((700, 480))
-		bg.fill((64, 192, 128))
+		bg.fill(0x40C080)
 		super().__init__(user, bg, midbottom = (s_rect.centerx, s_rect.bottom - 25))
 		self.font = pygame.font.SysFont(None, 30)
 
@@ -185,17 +202,17 @@ class HiScoreMenu (Menu):
 
 	@Menu.render
 	def display_scores (self, surf):
-		self.render_text(self.select(*self.selection).action.capitalize() + ' Mode', (0, 0, 0), surf, midtop = (self.rect.width / 2, 30))
-		self.render_text('Name:', (0, 0, 0), surf, topleft = (25, 70))
-		self.render_text('Score:', (0, 0, 0), surf, topleft = (185, 70))
-		self.render_text('Lines:', (0, 0, 0), surf, topleft = (390, 70))
-		self.render_text('Time Taken:', (0, 0, 0), surf, topleft = (560, 70))
+		self.render_text(self.selected.action.capitalize() + ' Mode', 0x000000, surf, midtop = (self.rect.width / 2, 30))
+		self.render_text('Name:', 0x000000, surf, topleft = (25, 70))
+		self.render_text('Score:', 0x000000, surf, topleft = (185, 70))
+		self.render_text('Lines:', 0x000000, surf, topleft = (390, 70))
+		self.render_text('Time Taken:', 0x000000, surf, topleft = (560, 70))
 		d_scores = self.scorelist[self.selection[0]]
 		for i in range(10):
-			self.render_text('{}'.format(d_scores[i][0]), (0, 0, 0), surf, topleft = (30, 120 + i * 35))
-			self.render_text('{}'.format(d_scores[i][1]), (0, 0, 0), surf, topright = (self.rect.width / 2 - 30, 120 + i * 35))
-			self.render_text('{}'.format(d_scores[i][2]), (0, 0, 0), surf, topright = (self.rect.width - 210, 120 + i * 35))
-			self.render_text('{}:{:02d}:{:02d}'.format(d_scores[i][3]//6000, d_scores[i][3]//100%60, d_scores[i][3]%100), (0, 0, 0), surf, topright = (self.rect.width - 30, 120 + i * 35))
+			self.render_text('{}'.format(d_scores[i][0]), 0x000000, surf, topleft = (30, 120 + i * 35))
+			self.render_text('{}'.format(d_scores[i][1]), 0x000000, surf, topright = (self.rect.width / 2 - 30, 120 + i * 35))
+			self.render_text('{}'.format(d_scores[i][2]), 0x000000, surf, topright = (self.rect.width - 210, 120 + i * 35))
+			self.render_text('{}:{:02d}:{:02d}'.format(d_scores[i][3]//6000, d_scores[i][3]//100%60, d_scores[i][3]%100), 0x000000, surf, topright = (self.rect.width - 30, 120 + i * 35))
 
 	def run (self):
 		menu_bg.draw(screen)
@@ -204,16 +221,25 @@ class HiScoreMenu (Menu):
 		self.display_scores()
 		pygame.display.flip()
 
+class SettingsMenu (Menu):
+	"""
+	The Settings Menu allows the user to edit game settings for more convenient play.
+
+	The selections of this menu are special, and change the states of global variables.
+	"""
+	def __init__(self, user):
+		pass
+
 class PauseMenu (Menu):
 	"""
-		Pauses the game.
-		The timer doesn't run while paused.
+	Pauses the game.
+	The timer doesn't run while paused.
 	"""
 
 	def __init__(self, user):
 		self.pause_bg = pygame.Surface(screen.get_size())
 		bg = pygame.Surface((250, 300))
-		bg.fill((0, 255, 0))
+		bg.fill(0x00FF00)
 		super().__init__(user, bg, center = s_rect.center)
 		
 		tmargin = 20
@@ -235,31 +261,32 @@ class PauseMenu (Menu):
 		event = super().eval_input()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
-				if self.select(*self.selection).action == 'resume':
-					self.user.state = 'in_game'
-					pygame.mixer.music.unpause()
+				if self.selected.action == 'resume':
+					self.user.state = 'game'
+					mixer.music.unpause()
 					self.reset()
-				if self.select(*self.selection).action == 'restart':
-					self.user.state = 'in_game'
+				if self.selected.action == 'restart':
+					self.user.state = 'game'
 					self.user.reset()
 					self.game.set_data()
 					restart_music()
 					self.reset()
-				elif self.select(*self.selection).action == 'options':
+				elif self.selected.action == 'options':
 					pass
-				elif self.select(*self.selection).action == 'quit':
+				elif self.selected.action == 'quit':
 					self.user.state = 'main_menu'
 					self.user.reset()
 					self.game.set_data()
 					self.reset()
 			elif event.key == pygame.K_x or event.key == pygame.K_ESCAPE:
-				self.user.state = 'in_game'
+				self.user.state = 'game'
 
 	def run (self):
 		screen.blit(self.pause_bg, (0, 0))
 		self.draw(screen)
 		super().run()
 		pygame.display.flip()
+
 
 class SaveMenu (Menu):
 	"""
@@ -268,7 +295,7 @@ class SaveMenu (Menu):
 	"""
 	def __init__(self, user):
 		bg = pygame.Surface((500, 150))
-		bg.fill((12, 135, 205))
+		bg.fill(0x0C87CD)
 		super().__init__(user, bg, center = s_rect.center)
 		self.name = u''
 		self.placestring = '10th'
@@ -295,36 +322,35 @@ class SaveMenu (Menu):
 				self.name = self.name[:-1]
 			elif event.key == pygame.K_RETURN:
 				if len(self.name) < 8: self.name += ' ' * (8 - len(self.name))
-				encode_scores(self.user.gametype, list(str(self.name)) + [self.user.score, self.user.lines_cleared, self.eval_timer()])
+				encode_scores(self.user.gametype, [c.encode() for c in str(self.name)] + [self.user.score, self.user.lines_cleared, self.eval_timer()])
 				self.name = u''
 				self.user.reset()
-				self.user.state = 'loser'
+				self.user.state = 'loss_menu'
 			elif event.key == pygame.K_ESCAPE:
 				self.name = u''
 				self.user.reset()
-				self.user.state = 'loser'
+				self.user.state = 'loss_menu'
 
 	@Menu.render
 	def display_score (self, surf):
-		self.render_text('You got the '+self.placestring+' place high score!', (0, 0, 0), surf, midtop = (self.rect.width / 2, 15))
+		self.render_text('You got the '+self.placestring+' place high score!', 0x000000, surf, midtop = (self.rect.width / 2, 15))
 
-		self.render_text('Enter Name:', (0, 0, 0), surf, topleft = (15, 40))
-		self.render_text('Score:', (0, 0, 0), surf, topright = (self.rect.width / 2 - 40, 40))
-		self.render_text('Lines:', (0, 0, 0), surf, topleft = (self.rect.width / 2 + 40, 40))
-		self.render_text('Time Taken:', (0, 0, 0), surf, topright = (self.rect.width - 25, 40))
+		self.render_text('Enter Name:', 0x000000, surf, topleft = (15, 40))
+		self.render_text('Score:', 0x000000, surf, topright = (self.rect.width / 2 - 40, 40))
+		self.render_text('Lines:', 0x000000, surf, topleft = (self.rect.width / 2 + 40, 40))
+		self.render_text('Time Taken:', 0x000000, surf, topright = (self.rect.width - 25, 40))
 
-		self.render_text(self.name, (0, 0, 0), surf, topleft = (20, 65))
-		self.render_text(str(self.user.score), (0, 0, 0), surf, topright = (self.rect.width / 2 - 20, 65))
-		self.render_text(str(self.user.lines_cleared), (0, 0, 0), surf, topleft = (self.rect.width / 2 + 100, 65))
+		self.render_text(self.name, 0x000000, surf, topleft = (20, 65))
+		self.render_text(str(self.user.score), 0x000000, surf, topright = (self.rect.width / 2 - 20, 65))
+		self.render_text(str(self.user.lines_cleared), 0x000000, surf, topleft = (self.rect.width / 2 + 100, 65))
 		_time = self.eval_timer()
-		self.render_text('{}:{:02d}:{:02d}'.format(_time // 6000, _time // 100 % 60, _time % 100), (0, 0, 0), topright = (self.rect.width - 20, 65))
+		self.render_text('{}:{:02d}:{:02d}'.format(_time // 6000, _time // 100 % 60, _time % 100), 0x000000, surf, topright = (self.rect.width - 20, 65))
 
 	def run (self):
 		self.draw(screen)
 		self.eval_input()
 		self.display_score()
 		pygame.display.flip()
-
 
 class LossMenu (Menu):
 	"""
@@ -333,7 +359,7 @@ class LossMenu (Menu):
 	def __init__ (self, user):
 		self.loss_bg = pygame.Surface(screen.get_size())
 		bg = pygame.Surface((250, 300))
-		bg.fill((127, 127, 0))
+		bg.fill(0x7F7F00)
 		super().__init__(user, bg, center = s_rect.center)
 
 		tmargin = 20
@@ -355,15 +381,15 @@ class LossMenu (Menu):
 		event = super().eval_input()
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_z or event.key == pygame.K_RETURN:
-				if self.select(*self.selection).action == 'restart':
-					self.user.state = 'in_game'
+				if self.selected.action == 'restart':
+					self.user.state = 'game'
 					self.user.reset()
 					self.game.set_data()
 					restart_music()
 					self.reset()
-				elif self.select(*self.selection).action == 'options':
+				elif self.selected.action == 'options':
 					pass
-				elif self.select(*self.selection).action == 'quit':
+				elif self.selected.action == 'quit':
 					self.user.state = 'main_menu'
 					self.user.reset()
 					self.game.set_data()
@@ -371,8 +397,8 @@ class LossMenu (Menu):
 
 	@Menu.render
 	def rendered_text (self, surf):
-		self.render_text("Game Over!", (255, 255, 255), surf, midtop = (self.rect.width / 2, 15))
-		self.render_text("Your score was: " + str(self.loss_score), (255, 255, 255), surf, midtop = (self.rect.width / 2, 40))
+		self.render_text("Game Over!", 0xFFFFFF, surf, midtop = (self.rect.width / 2, 15))
+		self.render_text("Your score was: " + str(self.loss_score), 0xFFFFFF, surf, midtop = (self.rect.width / 2, 40))
 
 	def run (self):
 		screen.blit(self.loss_bg, (0, 0))
@@ -380,12 +406,3 @@ class LossMenu (Menu):
 		self.rendered_text()
 		super().run()
 		pygame.display.flip()
-
-class OptionMenu (Menu):
-	"""
-	The Options Menu allows the user to edit game settings for more convenient play.
-
-	The selections of this menu are special, and change the states of global variables.
-	"""
-	def __init__(self, user):
-		pass
