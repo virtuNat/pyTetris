@@ -91,3 +91,9 @@ Alpha 1.1.4:
 - Enabled pausing during line clear, turning Grid.clear_lines() into a generator, and optimizing its code in relation to the User object.
 - Replaced obsolete syntax.
 - Updated menu logic.
+
+Alpha 1.1.5:
+- Moved main program function into main game object in an attempt to implement the game in an object-oriented manner.
+- Updated the menu-switch system such that it now uses eval() to simplify the running loop code tremendously.
+- Fixed menu methods and attribute names for both efficiency and logical sense.
+- Made render_text its own function, and changed all color references into hexstrings.
