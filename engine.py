@@ -326,14 +326,14 @@ class Tetris (object):
 			# Prevent active tetrimino from sliding into gridblocks.
 			for block in self.newshape.blocks:
 				if self.collision_test(block, self.newshape):
-					self.freeshape.copy_to(self.newshape, self.user.linktiles)
+					self.newshape = self.freeshape.copy(self.user.linktiles)
 					break
 			else:
-				self.newshape.copy_to(self.freeshape, self.user.linktiles)
+				self.freeshape = self.newshape.copy(self.user.linktiles)
 
 	def eval_ghost (self, show = True):
 		# Evaluate and display the position of the ghost tetrimino.
-		self.freeshape.copy_to(self.ghostshape, self.user.linktiles, True)
+		self.ghostshape = self.freeshape.copy(self.user.linktiles, True)
 		ghost_collide = False
 		while not ghost_collide:
 			self.ghostshape.translate((0, 1))
@@ -442,9 +442,9 @@ class Tetris (object):
 				# Wall kicks reset the gravity timer.
 				if self.user.twist_flag: self.grav_frame = 1
 
-			if self.collision: self.freeshape.copy_to(self.newshape, self.user.linktiles)
+			if self.collision: self.newshape = self.freeshape.copy(self.user.linktiles)
 			else: 
-				self.newshape.copy_to(self.freeshape, self.user.linktiles)
+				self.freeshape = self.newshape.copy(self.user.linktiles)
 				self.eval_tspin()
 
 	def eval_gravity (self):
@@ -461,7 +461,8 @@ class Tetris (object):
 
 	def eval_fallen (self, posdif):
 		# Evaluates what happens to a tetrimino when it has just fallen.
-		if self.user.hard_flag: self.ghostshape.copy_to(self.freeshape, self.user.linktiles)
+		# If the hard drop was triggered, move the active piece immediately to the ghost image.
+		if self.user.hard_flag: self.freeshape = self.ghostshape.copy(self.user.linktiles)
 		# Reset DAS if the user has not let go of the key yet.
 		if self.shift_frame == 0 and self.shift_dir != '0':
 			self.shift_frame = self.shift_delay
@@ -537,7 +538,7 @@ class Tetris (object):
 				else: trapped = False
 			# If the shape is blocked and can't clear a line, game over.
 			if trapped: self.user.state = 'loss_menu'
-			self.freeshape.copy_to(self.newshape, self.user.linktiles)
+			self.newshape = self.freeshape.copy(self.user.linktiles)
 		else:
 			self.user.state = 'loss_menu'
 
