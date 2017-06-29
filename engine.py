@@ -4,7 +4,7 @@ try:
 	from shapes import *
 except ImportError as error:
 	print("One of the modules fucked up:")
-	raise error
+	raise
 
 class User (object):
 	"""
@@ -588,10 +588,8 @@ class Tetris (object):
 				elif self.user.levl >= 64: self.line_frame = 300
 			else: self.line_frame -= 1
 
-	def render_text (self, text, color, alpha = 255, surf = screen, **anchors):
-		# Alias to the render_text function.
-		# There's a weird bug that causes the color tag to be treated as 0x00ggbbaa instead of 0xrrggbbFF.
-		render_text(self, text, hex(int(color) * 256 + alpha), surf, **anchors)
+	# Refer to runtime.render_text()
+	render_text = render_text
 
 	def display (self):
 		# Display relevant stuff.

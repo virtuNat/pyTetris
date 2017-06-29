@@ -12,7 +12,7 @@ try:
 	import hashlib
 except ImportError as error:
 	print("A module must've shat itself:")
-	raise error
+	raise
 
 pygame.init()
 mixer.init(buffer = 1024)
@@ -67,7 +67,10 @@ def load_image (name, alpha = None, colorkey = None):
 
 def render_text (obj, text, color, surf = screen, **anchors):
 	# Takes an object with a font attribute, and creates a text surface that it blits to a given surface.
-	# Can be added to any class as a class method, provided that class instances have a font attribute.
+	# Can be added to any class as a method, provided that class instances have a font attribute.
+	if color < 2 ** 24:
+		# The output surface has 255 alpha by default, but it's possible to add an alpha channel to the color number.
+		color = color * 256 + 255
 	tsurf = obj.font.render(text, 0, pygame.Color(color))
 	surf.blit(tsurf, tsurf.get_rect(**anchors))
 
@@ -83,7 +86,7 @@ def restart_music():
 def quit ():
 	# Quick alias to the cleanup fucntions.
 	pygame.quit()
-	sys.exit(1)
+	sys.exit()
 
 class FreeSprite (pygame.sprite.Sprite):
 	"""
@@ -256,7 +259,7 @@ class Menu (AnimatedSprite):
 	such as moving along selections, positioning, and committing.
 	"""
 
-	# def __new__ (cls, bases, attrs): return type(cls, bases, attrs)
+	# def __new__ (cls): return type(cls, bases, attrs)()
 	# While it may be tempting to use Menu as a metaclass, there is no need for such specific behavioral changes during construction.
 
 	def __init__ (self, user, bg = None, rect = None, **pos):

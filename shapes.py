@@ -3,7 +3,7 @@ try:
 	from runtime import *
 except ImportError as error:
 	print("Runtime has fucking failed:")
-	raise error
+	raise
 
 block_source = load_image('tileset.png')
 grid_source = load_image('display.png', colorkey = 0x000000)

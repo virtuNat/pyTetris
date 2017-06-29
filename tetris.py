@@ -6,21 +6,20 @@ class TetrisGame (object):
 
 	Probably not the most elegant way of doing it...
 	"""
-	def __new__ (cls):
+	def __init__ (self):
 		# Initialize game environment.
 		try:
 			import engine
 		except ImportError as error:
 			print("The tetris grid got fucking clogged:")
-			raise error
-		# Instantiate game instance.
-		self = object.__new__(cls)
+			raise
+		# Instantiate game instance data.
 		self.__dict__.update(engine.init())
-		return self
+		print(self.__dict__)
 
 	def run (self):
 		# Run the program loop. 
-		# User state system allows menu changing to be as imple as running an eval()
+		# User state system allows menu changing to be as simple as running an eval()
 		# as long as the state name matches a menu variable name.
 		while self.user.state != 'quit':
 			self.clock.tick(60)
