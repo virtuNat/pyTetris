@@ -98,3 +98,8 @@ Alpha 1.1.5:
 - Fixed menu methods and attribute names for both efficiency and logical sense.
 - Made render_text its own function, and changed all color references into hexstrings.
 - Fixed ghost textures for increased visibility.
+
+Alpha 1.1.6:
+- Improved handling of scorefile reading/writing, fixed all (explored) bugs that caused crashes as a result of reading missing and invalid score files. This makes use of a context manager object.
+- Fully updated syntax to Python 3.x as of the fixed file handling.
+- Allowed numbers to be entered into score names.
