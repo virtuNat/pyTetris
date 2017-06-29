@@ -84,7 +84,7 @@ def restart_music():
 	mixer.music.play()
 
 def quit ():
-	# Quick alias to the cleanup fucntions.
+	# Alias to cleanup functions.
 	pygame.quit()
 	sys.exit()
 

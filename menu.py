@@ -15,9 +15,16 @@ class SFH (object):
 
 	It's a context manager inteded to be used with the built-in with statement 
 	to handle saving and pulling of score data safely.
+
+	To use this, do:
+	with SFH(scorefilename) as sfh: 
+		# Do scorefile operations...
+
+	Do note that sfh is a reference to the context manager object itself, not the 
+	file object. The file object is referenced under the sfile attribute.
 	"""
 
-	def __init__ (self, name):
+	def __init__ (self, name = 'hiscore.dat'):
 		name = os.path.join('data', name)
 		# The backup file is there to ensure that the data is preserved in some cases of fucketry.
 		# Note: Does not work if the backup file itself is fucked with.
@@ -44,6 +51,9 @@ class SFH (object):
 			self.sfile.seek(0)
 		# If this flag is False, then the backup file is assumed to be valid when a reading exception is thrown.
 		self.eflag = False
+
+	def __repr__ (self):
+		return "<Score file context manager with id "+str(id(self))+">"
 
 	def backup (self):
 		# Update the backup.
@@ -81,7 +91,7 @@ class SFH (object):
 			self.reset()
 			self.eflag = False
 
-	def decode (self, splitname):
+	def decode (self, splitname = False):
 		# Read the scorefile, and return 3 lists of top ten score lists.
 		self.sfile.seek(0, 2)
 		if self.sfile.tell() != 720:
@@ -139,23 +149,7 @@ class SFH (object):
 	def __exit__ (self, etype, evalue, tback):
 		# Cleanup both files.
 		self.bckup.close()
-		self.sfile.close()	
-
-def gen_scorelists (name = 'hiscore.dat'):
-	# Sets a new hiscore file. Should only be used when the hiscore.dat file is missing or corrupted somehow.
-	# Alias to the reset method of the ScoreFileHandler for backwards compatibility.
-	with SFH(name) as sfh:
-		sfh.reset()
-
-def decode_scores (splitname = False, name = 'hiscore.dat'):
-	# Alias to the decode method of the ScoreFileHandler for backwards compatibility.
-	with SFH(name) as sfh:
-		return sfh.decode(splitname)
-
-def encode_scores (gtype = 'arcade', entry = [c.encode() for c in 'Pajitnov'] + [444400, 44, 400000], name = 'hiscore.dat'):
-	# Alias to the encode method of the ScoreFileHandler for backwards compatibility.
-	with SFH(name) as sfh:
-		sfh.encode(gtype, entry)
+		self.sfile.close()
 
 class MainMenu (Menu):
 	""" 
@@ -193,7 +187,8 @@ class MainMenu (Menu):
 					pass
 				elif self.selected.action == 'hiscore':
 					self.user.state = 'score_menu'
-					self.score_menu.scorelist = decode_scores()
+					# Load the scores into the score menu every time it is selected so the scores are up to date.
+					with SFH() as sfh: self.score_menu.scorelist = sfh.decode()
 				elif self.selected.action == 'options':
 					pass
 				elif self.selected.action == 'quit':
@@ -418,9 +413,14 @@ class SaveMenu (Menu):
 			elif event.key == pygame.K_BACKSPACE:
 				self.name = self.name[:-1]
 			elif event.key == pygame.K_RETURN:
+				# When the name is entered:
+				# If the name length is shorter than eight characters, pad it to eight.
 				if len(self.name) < 8: self.name += ' ' * (8 - len(self.name))
-				score = [c.encode() for c in str(self.name)] + [self.user.score, self.user.lines_cleared, self.eval_timer()]
-				encode_scores(self.user.gametype, score)
+				with SFH() as sfh:
+					# Save the score to the score file.
+					score = [c.encode() for c in str(self.name)] + [self.user.score, self.user.lines_cleared, self.eval_timer()]
+					sfh.encode(self.user.gametype, score)
+				# Reset the menu object and refer the user to the loss menu.
 				self.name = u''
 				self.user.reset()
 				self.user.state = 'loss_menu'

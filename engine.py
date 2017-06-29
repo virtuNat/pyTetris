@@ -50,6 +50,9 @@ class User (object):
 
 		self.reset()
 
+	def __repr__ (self):
+		return "User instance running the <"+self.state+"> state."
+
 	def reset (self):
 		# Reset data when starting a new game.
 		self.score = 0 # Score value for the current game.
@@ -134,6 +137,9 @@ class Tetris (object):
 		self.grid = Grid(user)
 		self.grid.game = self
 		self.set_data()
+
+	def __repr__ (self):
+		return "<Tetris game engine object with id "+str(id(self))+">"
 
 	def set_data (self):
 		# Initializes the game data.
@@ -542,7 +548,7 @@ class Tetris (object):
 			elif self.user.gametype == 'timed': g = 1
 			elif self.user.gametype == 'free': g = 2
 
-			_scorelist = menu.decode_scores()[g]
+			with menu.SFH() as sfh: _scorelist = sfh.decode()[g]
 			_i = 10
 			for i in range(9, -1, -1):
 				if _scorelist[i][1] < self.user.score:

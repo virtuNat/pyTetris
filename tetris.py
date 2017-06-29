@@ -15,7 +15,6 @@ class TetrisGame (object):
 			raise
 		# Instantiate game instance data.
 		self.__dict__.update(engine.init())
-		print(self.__dict__)
 
 	def run (self):
 		# Run the program loop. 
