@@ -105,5 +105,5 @@ Alpha 1.1.6:
 - Allowed numbers to be entered into score names.
 
 Alpha 1.1.7:
-- OOP Optimization.
+- Object-Orieted Style code-side optimization.
 
