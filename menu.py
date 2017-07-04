@@ -200,8 +200,8 @@ class PauseMenu (Menu):
 		spacing = 5
 		height = 60
 
-		self.selections = [
-			[MenuOption(self, 'resume', 'Resume Game', (hmargin, tmargin), (self.rect.width - 2 * hmargin, height)),
+		self.selections = [[
+			MenuOption(self, 'resume', 'Resume Game', (hmargin, tmargin), (self.rect.width - 2 * hmargin, height)),
 			MenuOption(self, 'restart', 'Restart Game', (hmargin, tmargin + spacing + height), (self.rect.width - 2 * hmargin, height)),
 			MenuOption(self, 'options', 'Options', (hmargin, tmargin + 2 * (spacing + height)), (self.rect.width - 2 * hmargin, height)),
 			MenuOption(self, 'quit', 'Return to Menu', (hmargin, tmargin + 3 * (spacing + height)), (self.rect.width - 2 * hmargin, height))]]
@@ -327,8 +327,8 @@ class LossMenu (Menu):
 		spacing = 5
 		height = 60
 
-		self.selections = [
-			[MenuOption(self, 'restart', 'Try Again?', (hmargin, tmargin + spacing + height), (self.rect.width - 2 * hmargin, height)),
+		self.selections = [[
+			MenuOption(self, 'restart', 'Try Again?', (hmargin, tmargin + spacing + height), (self.rect.width - 2 * hmargin, height)),
 			MenuOption(self, 'settings', 'Game Settings', (hmargin, tmargin + 2 * (spacing + height)), (self.rect.width - 2 * hmargin, height)),
 			MenuOption(self, 'quit', 'Return to Menu', (hmargin, tmargin + 3 * (spacing + height)), (self.rect.width - 2 * hmargin, height))]]
 		self.set_range()

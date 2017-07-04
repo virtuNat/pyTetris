@@ -97,7 +97,7 @@ class User:
 		# Increase score for perfect clears.
 		if clearflag: temp_score *= self.clear_factor
 		if self.gametype == 'timed': temp_score *= float(30 - (self.timer // 10000)) / 10
-		return int(round(temp_score, 0))
+		return int(round(temp_score / 50, 0) * 50)
 
 	def eval_clear_score (self, clearflag):
 		# Evaluates the score gain from the last line clear.
@@ -272,7 +272,7 @@ class Tetris:
 			elif event.key == pygame.K_RIGHT: # Shift right
 				self.shift_dir = 'r'
 				self.shift_frame = self.shift_delay
-				if self.entry_flag: self.newshape.translate((1, 0))
+				if self.entry_flag: self.newshape.translate(( 1, 0))
 			elif event.key == pygame.K_DOWN: # Toggle soft drop
 				self.soft_drop = True
 				self.soft_pos = self.newshape.pos[1]
@@ -332,7 +332,7 @@ class Tetris:
 			if self.shift_dir == 'l':
 				self.newshape.translate((-1, 0))
 			if self.shift_dir == 'r':
-				self.newshape.translate((1, 0))
+				self.newshape.translate(( 1, 0))
 
 		if self.entry_flag:
 			# Prevent active tetrimino from sliding into gridblocks.
@@ -348,12 +348,12 @@ class Tetris:
 		self.ghostshape = self.freeshape.copy(self.user.linktiles, True)
 		ghost_collide = False
 		while not ghost_collide:
-			self.ghostshape.translate((0, 1))
+			self.ghostshape.translate(( 0, 1))
 			for block in self.ghostshape.blocks:
 				if self.collision_test(block, self.ghostshape):
 					ghost_collide = True
 					break
-		self.ghostshape.translate((0, -1))
+		self.ghostshape.translate(( 0,-1))
 		if show and self.user.showghost: self.ghostshape.draw()
 
 	def eval_tspin (self):
@@ -461,14 +461,14 @@ class Tetris:
 
 	def eval_gravity (self):
 		# Move shape one block down when gravity ticks.
-		self.newshape.translate((0, 1))
+		self.newshape.translate(( 0, 1))
 		for block in self.newshape.blocks:
 			# If collision occurs due to the gravity timer running out:
 			if self.collision_test(block, self.newshape):
 				gravflag = True
 				break
 		else: gravflag = False
-		self.newshape.translate((0,-1))
+		self.newshape.translate(( 0,-1))
 		return gravflag
 
 	def eval_fallen (self, posdif):

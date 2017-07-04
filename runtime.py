@@ -31,7 +31,7 @@ def cos (angle):
 def hyp_area (p1, p2):
 	# The area of a square whose side is the length of the line segment bounded by p1 and p2.
 	# Used for comparing distances without dealing with a square root operation.
-	return sum(list([(p2[i] - p1[i]) ** 2 for i in range(2)])) # c^2 = a^2 + b^2
+	return sum([(p2[i] - p1[i]) ** 2 for i in range(2)]) # c^2 = a^2 + b^2
 
 def get_ang (p1, p2):
 	# Angle from p1 to p2.

@@ -1,4 +1,10 @@
 # File handling classes.
+try:
+	import os
+	import struct
+except ImportError:
+	print("A module must've shat itself:")
+	raise
 
 class SFH:
 	"""

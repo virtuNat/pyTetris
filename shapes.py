@@ -210,6 +210,10 @@ class Grid (AnimatedSprite):
 		self.user = user
 		self.set_cells()
 
+	def __getitem__ (self, key):
+		# Alias to the __getitem__ method of this object's 2d list.
+		return self.cells.__getitem__(key)
+
 	def set_cells (self):
 		# Sets the Matrix to have nothing but the buffer blocks.
 		self.cells = [[Block([i, j], 0, fallen = True) if i < 2 or i > 11 or j > 21 else None for i in range(15)] for j in range(24)]
@@ -236,13 +240,13 @@ class Grid (AnimatedSprite):
 	def paste_shape (self, shape):
 		# Paste a shape to this grid.
 		for i in range(len(shape)):
-			self.cells[shape.poslist[i][1]][shape.poslist[i][0]] = shape.blocks[i]
+			self[shape.poslist[i][1]][shape.poslist[i][0]] = shape.blocks[i]
 
 	def is_full_row (self, row):
 		# Returns True if a given row is full of blocks.
 		# There is a full row if and only if none of the cells are empty.
 		for col in range(2, 12):
-			if self.cells[row][col] is None:
+			if self[row][col] is None:
 				return False
 		else: return True
 
@@ -250,23 +254,23 @@ class Grid (AnimatedSprite):
 		# Returns True if a (presumably full) row contains garbage blocks.
 		# Only the first two need to be checked as there can only be one non-garbage block in the row at any time.
 		for col in range(2, 4):
-			if self.cells[row][col].color == 7:
+			if self[row][col].color == 7:
 				return True
 		else: return False
 
 	def check_cleared (self):
 		# Returns True if the bottom-most row, at the end of a clearing chain, is void of blocks.
 		for col in range(2, 12):
-			if self.cells[21][col] is not None:
+			if self[21][col] is not None:
 				return False
 		else: return True
 
 	def flood_fill (self, t_shape, index, linkrule):
 		# Recursive blind flood fill function.
-		if self.cells[index[0]][index[1]] is not None and index[0] < 22 and 1 < index[1] < 12:
+		if self[index[0]][index[1]] is not None and index[0] < 22 and 1 < index[1] < 12:
 			# Cut block from grid to temporary shape.
-			t_shape.add(Block([index[1] - 6, index[0] - 1], self.cells[index[0]][index[1]].color, self.cells[index[0]][index[1]].links, linkrule))
-			self.cells[index[0]][index[1]] = None
+			t_shape.add(Block([index[1] - 6, index[0] - 1], self[index[0]][index[1]].color, self[index[0]][index[1]].links, linkrule))
+			self[index[0]][index[1]] = None
 			# Look at every nearby cell and perform again if valid.
 			self.flood_fill(t_shape, (index[0], index[1] - 1), linkrule) # Left
 			self.flood_fill(t_shape, (index[0] - 1, index[1]), linkrule) # Up
@@ -275,12 +279,12 @@ class Grid (AnimatedSprite):
 
 	def link_fill (self, t_shape, index, linkrule):
 		# Recursive flood fill function using the links.
-		if self.cells[index[0]][index[1]] is not None and index[0] < 22 and 1 < index[1] < 12:
+		if self[index[0]][index[1]] is not None and index[0] < 22 and 1 < index[1] < 12:
 			# Cut block from grid to temporary shape.
-			t_shape.add(Block([index[1] - 6, index[0] - 1], self.cells[index[0]][index[1]].color, self.cells[index[0]][index[1]].links, linkrule))
+			t_shape.add(Block([index[1] - 6, index[0] - 1], self[index[0]][index[1]].color, self[index[0]][index[1]].links, linkrule))
 			# Save links to temporary variable before deleting the block.
-			oldlinks = self.cells[index[0]][index[1]].links
-			self.cells[index[0]][index[1]] = None
+			oldlinks = self[index[0]][index[1]].links
+			self[index[0]][index[1]] = None
 			# Check adjacent blocks as indicated by the links.
 			if 0 in oldlinks: # Left
 				self.link_fill(t_shape, [index[0], index[1] - 1], linkrule)
@@ -296,7 +300,7 @@ class Grid (AnimatedSprite):
 		# Set the fallen flag of all blocks above and one row below to False, which means they're 'floating'.
 		for i in range(base_row + 1, -1, -1):
 			for j in range(2, 12):
-				if self.cells[i][j] is not None and self.cells[i][j].color != 7: self.cells[i][j].fallen = False
+				if self[i][j] is not None and self[i][j].color != 7: self[i][j].fallen = False
 		# For each row, cut a set of temporary shapes from it to allow to fall.
 		locked_shapes = True
 		while locked_shapes:
@@ -306,7 +310,7 @@ class Grid (AnimatedSprite):
 				tempshapes = [ ]
 				for j in range(2, 12):
 					# Add blocks that both exist and have not fallen yet.
-					if self.cells[i][j] is None or self.cells[i][j].fallen: continue
+					if self[i][j] is None or self[i][j].fallen: continue
 					# Create new blank temporary shape.
 					tempshape = Shape()
 					# Cut connected blocks from grid to the shape.
@@ -318,7 +322,7 @@ class Grid (AnimatedSprite):
 						self.link_fill(tempshape, (i, j), self.user.linktiles)
 					for block in tempshape:
 						# If the block being tested isn't connected to the block below it, then the shape it's a part of is blocked.
-						if self.user.cleartype == 1 or (3 not in block.links and self.cells[block.relpos[1] + 2][block.relpos[0] + 6] is not None):
+						if self.user.cleartype == 1 or (3 not in block.links and self[block.relpos[1] + 2][block.relpos[0] + 6] is not None):
 							locked_shapes = True
 							# Cut the shape back to the matrix.
 							self.paste_shape(tempshape)
@@ -332,10 +336,10 @@ class Grid (AnimatedSprite):
 					shape.translate((0, 1))	
 					# Test if moving down one space causes a collision.
 					for block in shape:
-						if self.cells[block.relpos[1] + shape.pos[1]][block.relpos[0] + shape.pos[0]] is None: continue
+						if self[block.relpos[1] + shape.pos[1]][block.relpos[0] + shape.pos[0]] is None: continue
 						collision = True
 						# If a collision has occured, test if it collided with a fallen block.
-						if self.cells[block.relpos[1] + shape.pos[1]][block.relpos[0] + shape.pos[0]].fallen and not block.fallen:
+						if self[block.relpos[1] + shape.pos[1]][block.relpos[0] + shape.pos[0]].fallen and not block.fallen:
 							for oldblock in shape: oldblock.fallen = True
 						break
 					if collision:
@@ -380,16 +384,16 @@ class Grid (AnimatedSprite):
 					# Remove the links that point to blocks that are to be cleared.
 					for j in range(2, 12):
 						# Remove upward links from blocks below.
-						if self.cells[i + 1][j] is not None and 3 in self.cells[i][j].links:
-							self.cells[i + 1][j].links.remove(1)
-							self.cells[i + 1][j].update(self.cells[i + 1][j].color, self.user.linktiles)
+						if self[i + 1][j] is not None and 3 in self[i][j].links:
+							self[i + 1][j].links.remove(1)
+							self[i + 1][j].update(self[i + 1][j].color, self.user.linktiles)
 						# Remove downward links from blocks above.
-						if self.cells[i - 1][j] is not None and 1 in self.cells[i][j].links:
-							self.cells[i - 1][j].links.remove(3)
-							self.cells[i - 1][j].update(self.cells[i - 1][j].color, self.user.linktiles)
+						if self[i - 1][j] is not None and 1 in self[i][j].links:
+							self[i - 1][j].links.remove(3)
+							self[i - 1][j].update(self[i - 1][j].color, self.user.linktiles)
 						# Just leave the row empty if the method is sticky or cascade.
 						if self.user.cleartype > 0:
-							self.cells[i][j] = None
+							self[i][j] = None
 					# Splice the old row out and create a new blank row on top if method is naive or when clearing a garbage row.
 					if self.user.cleartype < 1 or garbagerow:
 						# Delete the old row.
@@ -428,8 +432,8 @@ class Grid (AnimatedSprite):
 		self.draw(screen)
 		for i in range(22):
 			for j in range(2, 12):
-				if self.cells[i][j] is None: continue
-				block = self.cells[i][j]
+				if self[i][j] is None: continue
+				block = self[i][j]
 				block.relpos = [j, i]
 				block.set(bottomleft = (self.rect.centerx + block.rect.width * (j - 7), self.rect.bottom - 20 + block.rect.height * (i - 21)))
 				if i > 1: block.draw(screen)
