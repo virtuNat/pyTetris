@@ -4,11 +4,11 @@ This is intended to be a Tetris clone.
 
 ### Controls:
 LEFT and RIGHT arrow keys to shift tetrimino left and right.
-DOWN arrow key to speed up falling tetrimino.
-Z or LCTRL keys to rotate tetrimino counter-clockwise. 
-X or UP keys to rotate tetrimino clockwise.
-SPACE key to drop tetrimino, and LSHIFT to hold tetrimino.
-ESCAPE key to pause.
+<br>DOWN arrow key to speed up falling tetrimino.
+<br>Z or LCTRL keys to rotate tetrimino counter-clockwise. 
+<br>X or UP keys to rotate tetrimino clockwise.
+<br>SPACE key to drop tetrimino, and LSHIFT to hold tetrimino.
+<br>ESCAPE key to pause.
 
 ### Feature Tracker:
 - (Done) Grid collision detection and piece shifting.
