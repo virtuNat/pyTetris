@@ -2,17 +2,38 @@
 try:
 	import menu
 	from shapes import *
-except ImportError as error:
+except ImportError:
 	print("One of the modules fucked up:")
 	raise
 
-class User (object):
+game_bg = pygame.Surface(screen.get_size())
+game_bg.fill(0x000000)
+
+class User:
 	"""
 	The User class tracks global game state values, such as
 	plot flags, difficulty, game internal state, etc.
 
 	In this case, it tracks tetris difficulty values and handles score data.
 	"""
+	# Score data.
+	clear_factor = 2. # The multiplier if the entire matrix was cleared by this piece.
+
+	drop_score = 1. # The base score added when a block lands.
+	dist_factor = 0.6 # The multiplier per unit distance dropped by a piece in a soft or hard drop.
+	hard_flag = False # True if the piece was hard-dropped.
+
+	line_score = 500. # The base score added when a line is cleared.
+	line_factor = 0.8 # The added percentage for each line cleared in one drop.
+	cascade_factor = 1.3 # The multiplier for each set of lines cleared successively. Exponential.
+
+	twist_factor = 2.4 # The multiplier if the starting piece was twisted in.
+	twist_flag = False # True if the tetrimino twisted into place.
+
+	tspin_factor = 1.8 # The multiplier if it was a successful T-spin.
+	tspin_flag = False # True if a T-spin occured.
+
+	combo_factor = 1.5 # The multiplier for subsequent drop clears.
 
 	def __init__ (self):
 		# Global state variables.
@@ -26,32 +47,12 @@ class User (object):
 		self.showghost = True # Determines if the ghost tetrimino will be shown.
 		self.linktiles = True # Determines if the blocks will use connected textures.
 
+		self.resetgame = False # True if Tetris.set_data() needs to be called on the next run.
 		self.debug = True
-		# Score data.
-		self.clear_factor = 2. # The multiplier if the entire matrix was cleared by this piece.
-
-		self.drop_score = 1. # The base score added when a block lands.
-		self.dist_factor = 0.6 # The multiplier per unit distance dropped by a piece in a soft or hard drop.
-		self.hard_flag = False # True if the piece was hard-dropped.
-
-		self.line_score = 500. # The base score added when a line is cleared.
-		self.line_factor = 0.8 # The added percentage for each line cleared in one drop.
-		self.cascade_factor = 1.5 # The multiplier for each set of lines cleared successively. Exponential.
-
-		self.twist_factor = 2.4 # The multiplier if the starting piece was twisted in.
-		self.twist_flag = False # True if the tetrimino twisted into place.
-
-		self.tspin_factor = 1.8 # The multiplier if it was a successful T-spin.
-		self.tspin_flag = False # True if a T-spin occured.
-
-		self.combo_ctr = 0 # Current combo number
-		self.combo_factor = 1.2 # The multiplier for subsequent drop clears.
-		self.current_combo = 1. # The current combo multiplier.
-
 		self.reset()
 
 	def __repr__ (self):
-		return "User instance running the <"+self.state+"> state."
+		return "<User instance running the <"+self.state+"> state.>"
 
 	def reset (self):
 		# Reset data when starting a new game.
@@ -61,6 +62,9 @@ class User (object):
 		self.lines_cleared = 0 # Total number of lines cleared in the game.
 		self.level = 1 # Current level in arcade mode.
 		self.timer = 0 # How long the game has been playing.
+
+		self.combo_ctr = 0 # Current combo number.
+		self.current_combo = 1. # The current combo multiplier.
 
 	def add_score (self, value):
 		# Shortcut adder alias.
@@ -80,11 +84,11 @@ class User (object):
 		if len(self.line_list) > 1 and self.line_list[-1] == 0:
 			self.line_list.pop()
 		temp_score = 0
-		# In arcade mode, level boosts score earned by successive line clears.
+		# In arcade mode, level boosts score earned by line clears.
 		_lscore = self.line_score
 		if self.gametype == 'arcade': _lscore += self.level * 2.5
 		# Calculate base score from number of cascades and number of lines cleared per cascade.
-		for line in self.line_list: temp_score += (_lscore * line) * (1 + (self.line_factor * (line - 1)))
+		for line in self.line_list: temp_score += _lscore * line * (1 + (self.line_factor * (line - 1)))
 		temp_score *= (self.cascade_factor ** (len(self.line_list) - 1)) * self.current_combo
 		# Increase score for twists.
 		if self.twist_flag: temp_score *= self.twist_factor
@@ -93,13 +97,22 @@ class User (object):
 		# Increase score for perfect clears.
 		if clearflag: temp_score *= self.clear_factor
 		if self.gametype == 'timed': temp_score *= float(30 - (self.timer // 10000)) / 10
-		return int(temp_score)
+		return int(round(temp_score, 0))
 
 	def eval_clear_score (self, clearflag):
-		# Add the clear line score.
-		self.lines_cleared += sum(self.line_list)
-		self.last_score = self.predict_score(clearflag)
-		self.add_score(self.last_score)
+		# Evaluates the score gain from the last line clear.
+		if len(self.line_list) > 1 or self.line_list[0] > 0:
+			# Add the clear line score.
+			self.lines_cleared += sum(self.line_list)
+			self.last_score = self.predict_score(clearflag)
+			self.add_score(self.last_score)
+			# Increment combo counter.
+			self.combo_ctr += 1
+			self.current_combo = self.combo_factor ** self.combo_ctr
+		else:
+			# If no lines were cleared, break combo.
+			self.current_combo = 1.0
+			self.combo_ctr = 0
 
 	def eval_level (self):
 		# Evaluate current arcade level.
@@ -113,7 +126,7 @@ class User (object):
 			self.level = 191 + ((self.lines_cleared - 3840) // 40)
 		else: self.level = 256
 
-class Tetris (object):
+class Tetris:
 	""" 
 	The actual game in itself.
 
@@ -135,7 +148,6 @@ class Tetris (object):
 		self.theme = load_music('tetris.ogg')
 
 		self.grid = Grid(user)
-		self.grid.game = self
 		self.set_data()
 
 	def __repr__ (self):
@@ -456,7 +468,7 @@ class Tetris (object):
 				gravflag = True
 				break
 		else: gravflag = False
-		self.newshape.translate((0, -1))
+		self.newshape.translate((0,-1))
 		return gravflag
 
 	def eval_fallen (self, posdif):
@@ -648,11 +660,11 @@ class Tetris (object):
 
 	def run (self):
 		# Runs the game loop.
-
+		if self.user.resetgame:
+			self.set_data()
+			self.user.resetgame = False
 		# Evaluate arcade mode difficulty before any calculations with the active piece are done to avoid bugs.
-		if self.user.gametype == 'arcade':
-			# Evaluate current arcade level.
-			self.ramp_arcade(self.user.level)
+		if self.user.gametype == 'arcade': self.ramp_arcade(self.user.level)
 		
 		# Display the background.
 		screen.blit(self.bg, (0, 0))
@@ -713,28 +725,33 @@ class Tetris (object):
 		pygame.display.flip()
 
 def init ():
-	# Initialize game objects.
-	user = User()
-	play_menu = menu.PlayMenu(user)
-	score_menu = menu.HiScoreMenu(user)
-	pause_menu = menu.PauseMenu(user)
-	save_menu = menu.SaveMenu(user)
-	loss_menu = menu.LossMenu(user)
-	main_menu = menu.MainMenu(user, score_menu)
-	game = Tetris(user, pause_menu, save_menu, loss_menu)
-	# Some menus need to use game variables.
-	play_menu.game = pause_menu.game = loss_menu.game = game
-	
-	return dict(
-		clock = clock,
-		user = user,
-		main_menu = main_menu,
-		play_menu = play_menu,
-		# help_menu = help_menu,
-		score_menu = score_menu,
-		# settings = settings,
-		pause_menu = pause_menu,
-		save_menu = save_menu,
-		loss_menu = loss_menu,
-		game = game,
-		quit = quit)
+	class TetrisGame:
+		"""
+		The game instance is now run by an object created from this class.
+		The function init() returns an instance of TetrisGame, an instance of the game as a whole.
+		"""
+		# Initialize game objects.
+		clock = clock
+		user = User()
+		play_menu = menu.PlayMenu(user)
+		score_menu = menu.HiScoreMenu(user)
+		pause_menu = menu.PauseMenu(user)
+		save_menu = menu.SaveMenu(user)
+		loss_menu = menu.LossMenu(user)
+		main_menu = menu.MainMenu(user, score_menu)
+		game = Tetris(user, pause_menu, save_menu, loss_menu)
+		quit = quit
+
+		def __repr__(self):
+			return "pyTetris project by virtuNat.\nCurrent fps: "+clock.get_fps()+"\nCurrent game state: <"+self.user.state+">"
+
+		def run (self):
+			# Run the program loop. 
+			# User state system allows menu changing to be as simple as running an eval()
+			# as long as the state name matches a menu variable name.
+			while self.user.state != 'quit':
+				self.clock.tick(60)
+				eval('self.' + self.user.state).run()
+			# Clean up when the program ends.
+			self.quit()		
+	return TetrisGame()

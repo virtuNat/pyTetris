@@ -9,8 +9,7 @@ try:
 	import pygame
 	import pygame.mixer as mixer
 	import struct
-	import hashlib
-except ImportError as error:
+except ImportError:
 	print("A module must've shat itself:")
 	raise
 
@@ -32,7 +31,7 @@ def cos (angle):
 def hyp_area (p1, p2):
 	# The area of a square whose side is the length of the line segment bounded by p1 and p2.
 	# Used for comparing distances without dealing with a square root operation.
-	return ((p1[0] - p2[0]) ** 2, (p1[1] - p2[1]) ** 2) # c^2 = a^2 + b^2
+	return sum(list([(p2[i] - p1[i]) ** 2 for i in range(2)])) # c^2 = a^2 + b^2
 
 def get_ang (p1, p2):
 	# Angle from p1 to p2.
@@ -83,10 +82,10 @@ def restart_music():
 	mixer.music.rewind()
 	mixer.music.play()
 
-def quit ():
+def quit (obj = None, exit = 1):
 	# Alias to cleanup functions.
 	pygame.quit()
-	sys.exit()
+	sys.exit(exit)
 
 class FreeSprite (pygame.sprite.Sprite):
 	"""
@@ -322,11 +321,11 @@ class Menu (AnimatedSprite):
 		blitting all of it to a colorkey-preset surface passed as the second argument to the original method.
 
 		For this to work, the display method needs to have a second argument as the surface to be used,
-		all constituent surface are blitted to that surface and don't need magenta (0xFF00FF).
+		all constituent surfaces are blitted to that surface and don't need magenta (0xFF00FF).
 
 		To call this decorator, use @Menu.render
 		"""
-		def wrapper(self, *args, **kwargs):
+		def wrapper (self, *args, **kwargs):
 			rsurf = pygame.Surface(self.rect.size)
 			rsurf.fill(0xFF00FF)
 			rsurf.set_colorkey(0xFF00FF)

@@ -1,15 +1,9 @@
 # Code for the tetris blocks, imported by the engine.
 try:
 	from runtime import *
-except ImportError as error:
+except ImportError:
 	print("Runtime has fucking failed:")
 	raise
-
-block_source = load_image('tileset.png')
-grid_source = load_image('display.png', colorkey = 0x000000)
-grid_rect = grid_source.get_rect(midbottom = (s_rect.centerx, s_rect.bottom - 20))
-game_bg = pygame.Surface(screen.get_size())
-game_bg.fill(0x000000)
 
 class Block (FreeSprite):
 	"""
@@ -17,29 +11,23 @@ class Block (FreeSprite):
 
 	The block object supports copying of its data to other blocks.
 	"""
+	block_src = load_image('tileset.png')
 
 	def __init__(self, relpos, color, links = [ ], linkrule = True, ghost = False, fallen = False):
+		super().__init__(self.block_src, pygame.Rect(0, 0, 25, 25))
 		self.relpos = relpos # Position of the block relative to a predefined point on the grid, or the "center" of the shape.
 		self.color = color # Block color.
 		self.links = links # Which direction a block is linked to. 0, 1, 2, 3, for L, U, R, D respectively.
 		self.ghost = ghost # True if this is a ghost block, and will use a ghost texture.
 		self.fallen = fallen # Used by the line clear function.
 		self.update(color, linkrule, ghost)
-		super().__init__(self.image)
 
 	def __repr__ (self):
 		return "Tetris Block at" + str(self.relpos)
 
-	def copy (self, block = None, linkrule = True, ghost = False):
+	def copy (self, linkrule = True, ghost = False):
 		# Create new Block object that is the same as this one.
-		if block is None:
-			return Block(self.relpos, self.color, self.links, linkrule, ghost)
-		else:
-			block.relpos = self.relpos
-			block.color = self.color
-			block.links = self.links
-			block.ghost = self.ghost
-			block.update(self.color, linkrule, ghost)
+		return Block(self.relpos, self.color, self.links, linkrule, ghost)
 
 	def update (self, color, linkrule = True, ghost = False):
 		# Evaluate the graphic to be used. Not much else to update in Block Sprites.
@@ -66,7 +54,7 @@ class Block (FreeSprite):
 				else: form = 12
 			else: raise IndexError('Having more than three links on a block does not a tetrimino make.')
 		else: form = 0
-		self.image = block_source.subsurface(pygame.Rect(color, form * 25, 25, 25))
+		self.cliprect = pygame.Rect(color, form * 25, 25, 25)
 		# if ghost: self.image.set_alpha(191)
 
 class Shape (FreeGroup):
@@ -89,19 +77,47 @@ class Shape (FreeGroup):
 		self.state = 0 # Current rotation relative to spawn rotation.
 
 		if form == 0: # I
-			self.add([Block([-1, 0], form, [2], linkrule), Block([0, 0], form, [0, 2], linkrule), Block([1, 0], form, [0, 2], linkrule), Block([2, 0], form, [0], linkrule)])
+			self.add([
+				Block([-1, 0], form, [2], linkrule), 
+				Block([ 0, 0], form, [0, 2], linkrule), 
+				Block([ 1, 0], form, [0, 2], linkrule), 
+				Block([ 2, 0], form, [0], linkrule)])
 		elif form == 1: # O
-			self.add([Block([0, -1], form, [2, 3], linkrule), Block([1, -1], form, [3, 0], linkrule), Block([1, 0], form, [0, 1], linkrule), Block([0, 0], form, [1, 2], linkrule)])
+			self.add([
+				Block([ 0,-1], form, [2, 3], linkrule), 
+				Block([ 1,-1], form, [3, 0], linkrule), 
+				Block([ 1, 0], form, [0, 1], linkrule), 
+				Block([ 0, 0], form, [1, 2], linkrule)])
 		elif form == 2: # T
-			self.add([Block([-1, 0], form, [2], linkrule), Block([0, -1], form, [3], linkrule), Block([1, 0], form, [0], linkrule), Block([0, 0], form, [0, 1, 2], linkrule)])
+			self.add([
+				Block([-1, 0], form, [2], linkrule), 
+				Block([ 0,-1], form, [3], linkrule), 
+				Block([ 1, 0], form, [0], linkrule), 
+				Block([ 0, 0], form, [0, 1, 2], linkrule)])
 		elif form == 3: # S
-			self.add([Block([-1, 0], form, [2], linkrule), Block([0, 0], form, [0, 1], linkrule), Block([0, -1], form, [2, 3], linkrule), Block([1, -1], form, [0], linkrule)])
+			self.add([
+				Block([-1, 0], form, [2], linkrule), 
+				Block([ 0, 0], form, [0, 1], linkrule), 
+				Block([ 0,-1], form, [2, 3], linkrule), 
+				Block([ 1,-1], form, [0], linkrule)])
 		elif form == 4: # Z
-			self.add([Block([-1, -1], form, [2], linkrule), Block([0, -1], form, [0, 3], linkrule), Block([0, 0], form, [2, 1], linkrule), Block([1, 0], form, [0], linkrule)])
+			self.add([
+				Block([-1,-1], form, [2], linkrule), 
+				Block([ 0,-1], form, [0, 3], linkrule), 
+				Block([ 0, 0], form, [2, 1], linkrule), 
+				Block([ 1, 0], form, [0], linkrule)])
 		elif form == 5: # J
-			self.add([Block([-1, -1], form, [3], linkrule), Block([-1, 0], form, [1, 2], linkrule), Block([0, 0], form, [0, 2], linkrule), Block([1, 0], form, [0], linkrule)])
+			self.add([
+				Block([-1,-1], form, [3], linkrule), 
+				Block([-1, 0], form, [1, 2], linkrule), 
+				Block([ 0, 0], form, [0, 2], linkrule), 
+				Block([ 1, 0], form, [0], linkrule)])
 		elif form == 6: # L
-			self.add([Block([-1, 0], form, [2], linkrule), Block([0, 0], form, [0, 2], linkrule), Block([1, 0], form, [0, 1], linkrule), Block([1, -1], form, [3], linkrule)])
+			self.add([
+				Block([-1, 0], form, [2], linkrule), 
+				Block([ 0, 0], form, [0, 2], linkrule), 
+				Block([ 1, 0], form, [0, 1], linkrule), 
+				Block([ 1,-1], form, [3], linkrule)])
 
 	def __getattr__ (self, name):
 		if name == 'blocks':
@@ -112,15 +128,8 @@ class Shape (FreeGroup):
 			return [[self.pos[i] + block.relpos[i] for i in range(2)] for block in self]
 
 	def __repr__ (self):
-		if self.form == 0: shapetext = 'I'
-		elif self.form == 1: shapetext = 'O'
-		elif self.form == 2: shapetext = 'T'
-		elif self.form == 3: shapetext = 'S'
-		elif self.form == 4: shapetext = 'Z'
-		elif self.form == 5: shapetext = 'J'
-		elif self.form == 6: shapetext = 'L'
-		else: shapetext = 'Temporary Aggregate'
-		return shapetext + " Tetrimino with blocks at: " + repr(self.blocks)
+		shapetext = 'IOTSZJL'[self.form] if self.form < 7 else 'Temporary Aggregate'
+		return shapetext + " Tetrimino with blocks at: " + repr(self.poslist)
 
 	def copy (self, linkrule = True, ghost = False):
 		# Copy this shape, creating a new Shape object in the process.
@@ -128,7 +137,7 @@ class Shape (FreeGroup):
 		dest.form = self.form
 		dest.pos = self.pos
 		dest.state = self.state
-		for block in self: dest.add(Block(block.relpos, block.color, block.links, linkrule, ghost))
+		for block in self: dest.add(block.copy(linkrule, ghost))
 		return dest
 
 	def rotate (self, clockwise, linkrule = True):
@@ -193,9 +202,11 @@ class Grid (AnimatedSprite):
 
 	Said invisible blocks mean that the only required checks per frame are collision detection checks.
 	"""
+	image = load_image('display.png', colorkey = 0x000000)
+	rect = image.get_rect(midbottom = (s_rect.centerx, s_rect.bottom - 20))
 
 	def __init__(self, user):
-		super().__init__(grid_source, grid_rect)
+		super().__init__(self.image, self.rect)
 		self.user = user
 		self.set_cells()
 
@@ -227,6 +238,29 @@ class Grid (AnimatedSprite):
 		for i in range(len(shape)):
 			self.cells[shape.poslist[i][1]][shape.poslist[i][0]] = shape.blocks[i]
 
+	def is_full_row (self, row):
+		# Returns True if a given row is full of blocks.
+		# There is a full row if and only if none of the cells are empty.
+		for col in range(2, 12):
+			if self.cells[row][col] is None:
+				return False
+		else: return True
+
+	def is_garbage_row (self, row):
+		# Returns True if a (presumably full) row contains garbage blocks.
+		# Only the first two need to be checked as there can only be one non-garbage block in the row at any time.
+		for col in range(2, 4):
+			if self.cells[row][col].color == 7:
+				return True
+		else: return False
+
+	def check_cleared (self):
+		# Returns True if the bottom-most row, at the end of a clearing chain, is void of blocks.
+		for col in range(2, 12):
+			if self.cells[21][col] is not None:
+				return False
+		else: return True
+
 	def flood_fill (self, t_shape, index, linkrule):
 		# Recursive blind flood fill function.
 		if self.cells[index[0]][index[1]] is not None and index[0] < 22 and 1 < index[1] < 12:
@@ -256,7 +290,63 @@ class Grid (AnimatedSprite):
 				self.link_fill(t_shape, [index[0], index[1] + 1], linkrule)
 			if 3 in oldlinks: # Down
 				self.link_fill(t_shape, [index[0] + 1, index[1]], linkrule)
-			self.cells[index[0]][index[1]] = None
+
+	def cascade (self, tempgrid, base_row):
+		# Drop floating blocks during non-naive line clear methods.
+		# Set the fallen flag of all blocks above and one row below to False, which means they're 'floating'.
+		for i in range(base_row + 1, -1, -1):
+			for j in range(2, 12):
+				if self.cells[i][j] is not None and self.cells[i][j].color != 7: self.cells[i][j].fallen = False
+		# For each row, cut a set of temporary shapes from it to allow to fall.
+		locked_shapes = True
+		while locked_shapes:
+			for i in range(21, -1, -1):
+				# locked_shapes is True when one of the shapes in the row is blocked from falling by another shape.
+				locked_shapes = False
+				tempshapes = [ ]
+				for j in range(2, 12):
+					# Add blocks that both exist and have not fallen yet.
+					if self.cells[i][j] is None or self.cells[i][j].fallen: continue
+					# Create new blank temporary shape.
+					tempshape = Shape()
+					# Cut connected blocks from grid to the shape.
+					if self.user.cleartype == 1:
+						# Perform a blind flood fill if the method is sticky.
+						self.flood_fill(tempshape, (i, j), self.user.linktiles)
+					elif self.user.cleartype == 2:
+						# Perform a flood fill considering which blocks are linked if the method is cascade.
+						self.link_fill(tempshape, (i, j), self.user.linktiles)
+					for block in tempshape:
+						# If the block being tested isn't connected to the block below it, then the shape it's a part of is blocked.
+						if self.user.cleartype == 1 or (3 not in block.links and self.cells[block.relpos[1] + 2][block.relpos[0] + 6] is not None):
+							locked_shapes = True
+							# Cut the shape back to the matrix.
+							self.paste_shape(tempshape)
+							break
+					# Add this temprary shape to the list if it's not blocked.
+					else: tempshapes.append(tempshape)
+				# If there is at least one temporary shape created, move them all down one space.
+				if not len(tempshapes): continue
+				for shape in tempshapes:
+					collision = False
+					shape.translate((0, 1))	
+					# Test if moving down one space causes a collision.
+					for block in shape:
+						if self.cells[block.relpos[1] + shape.pos[1]][block.relpos[0] + shape.pos[0]] is None: continue
+						collision = True
+						# If a collision has occured, test if it collided with a fallen block.
+						if self.cells[block.relpos[1] + shape.pos[1]][block.relpos[0] + shape.pos[0]].fallen and not block.fallen:
+							for oldblock in shape: oldblock.fallen = True
+						break
+					if collision:
+						# Move it back up one space when a collision has been detected.
+						shape.translate((0, -1))
+						# If it collided with a fallen block, then the shape has fallen. Copy it back to the matrix.
+						if shape.blocks[0].fallen: self.paste_shape(shape)
+						# If it either did not collide, or collided with another floating shape, copy it to the tempgrid instead.
+						else: tempgrid.append(shape)
+					else: tempgrid.append(shape)
+			
 
 	def clear_lines (self):
 		"""
@@ -271,8 +361,6 @@ class Grid (AnimatedSprite):
 		"""
 		# Track how many lines are cleared per chain.
 		self.user.line_list = [0]
-
-		# Initialize the cleared flag to enter the while loop.
 		cleared = True
 		while cleared:
 			# Set the cleared flag to False to represent no lines being cleared yet.
@@ -281,27 +369,15 @@ class Grid (AnimatedSprite):
 			base_row = 0
 			# Test if there is a full row, checking upwards, then clear all of them.
 			for i in range(21, -1, -1):
-				# There is a full row if and only if none of the cells are empty.
-				for j in range(2, 12):
-					if self.cells[i][j] is None:
-						full_row = False
-						break
-				else: full_row = True
 				# Once a row is detected to be full, clear it.
-				if full_row:
+				if self.is_full_row(i):
+					garbagerow = self.is_garbage_row(i)
 					# Increment the cleared lines counter.
 					self.user.line_list[-1] += 1
-					# A line was cleared.
 					cleared = True
-					# If a garbage row is being cleared, the method is always naive for that row only.
-					for j in range(2, 4):
-						if self.cells[i][j].color == 7:
-							garbage = True
-							break
-					else: garbage = False
 					# If a line is full below the indicated base_row, set base_row to that row.
 					if i > base_row: base_row = i
-					# Remove the links that point to blocks that will be cleared.
+					# Remove the links that point to blocks that are to be cleared.
 					for j in range(2, 12):
 						# Remove upward links from blocks below.
 						if self.cells[i + 1][j] is not None and 3 in self.cells[i][j].links:
@@ -315,100 +391,35 @@ class Grid (AnimatedSprite):
 						if self.user.cleartype > 0:
 							self.cells[i][j] = None
 					# Splice the old row out and create a new blank row on top if method is naive or when clearing a garbage row.
-					if self.user.cleartype < 1 or garbage:
+					if self.user.cleartype < 1 or garbagerow:
 						# Delete the old row.
 						self.cells.pop(i)
 						# Create new blank row at the top.
 						self.cells.insert(0, [Block([i, 0], 0, fallen = True) if i < 2 or i > 11 else None for i in range(15)])
 						# Force the game to look through all the rows again to avoid skipping lines.
 						break
-
-			# If the method is naive, then don't continue.
 			# If a line has been cleared, let the floating blocks fall until they collide with other blocks.
-			if self.user.cleartype > 0 and cleared:
-				tempgrid = [0]
-				while len(tempgrid):
-					# Tempgrid is the list of all shapes that have not fallen all the way down yet.
-					tempgrid = [ ]
-					# Set the fallen flag of all blocks above and one row below to False, which means they're 'floating'.
-					for i in range(base_row + 1, -1, -1):
-						for j in range(2, 12):
-							if self.cells[i][j] is not None and self.cells[i][j].color != 7: self.cells[i][j].fallen = False
-					# For each row, cut a set of temporary shapes from it to allow to fall.
-					locked_shapes = True
-					while locked_shapes:
-						for i in range(21, -1, -1):
-							# locked_shapes is True when one of the shapes in the row is blocked from falling by another shape.
-							locked_shapes = False
-							tempshapes = [ ]
-							for j in range(2, 12):
-								if self.cells[i][j] is not None and not self.cells[i][j].fallen:
-									# Create new blank temporary shape.
-									tempshape = Shape()
-									# Cut connected blocks from grid to the shape.
-									if self.user.cleartype == 1:
-										# Perform a blind flood fill if the method is sticky.
-										self.flood_fill(tempshape, (i, j), self.user.linktiles)
-									elif self.user.cleartype == 2:
-										# Perform a flood fill considering which blocks are linked if the method is cascade.
-										self.link_fill(tempshape, (i, j), self.user.linktiles)
-									for block in tempshape:
-										# If the block being tested isn't connected to the block below it, then the shape it's a part of is blocked.
-										if self.user.cleartype == 1 or (3 not in block.links and self.cells[block.relpos[1] + 2][block.relpos[0] + 6] is not None):
-											locked_shapes = True
-											# Cut the shape back to the matrix.
-											self.paste_shape(tempshape)
-											break
-									# Add this temprary shape to the list if it's not blocked.
-									else: tempshapes.append(tempshape)
-
-							# If there is at least one temporary shape created, move them all down one space.
-							if len(tempshapes) > 0:
-								for shape in tempshapes:
-									collision = False
-									shape.translate((0, 1))	
-									# Test if moving down one space causes a collision.
-									for block in shape:
-										if self.cells[block.relpos[1] + shape.pos[1]][block.relpos[0] + shape.pos[0]] is not None:
-											collision = True
-											# If a collision has occured, test if it collided with a fallen block.
-											if self.cells[block.relpos[1] + shape.pos[1]][block.relpos[0] + shape.pos[0]].fallen and not block.fallen:
-												for oldblock in shape:
-													oldblock.fallen = True
-									if collision:
-										# Move it back up one space when a collision has been detected.
-										shape.translate((0, -1))
-										# If it collided with a fallen block, then the shape has fallen. Copy it back to the matrix.
-										if shape.blocks[0].fallen:
-											self.paste_shape(shape)
-										# If it either did not collide, or collided with another floating shape, copy it to the tempgrid instead.
-										else: tempgrid.append(shape)
-									else: tempgrid.append(shape)
-
-					# Copy all of the tempgrid's shapes back to the matrix.
-					if len(tempgrid) > 0:
-						for shape in tempgrid:
-							self.paste_shape(shape)
-						# Display intermediate drops so the user can see the combo.
-						yield True
-				# If the tempgrid list is empty, that means that all the blocks have fallen. Check if the fallen blocks caused another line clear.
-				self.user.line_list.append(0)
-
-		if len(self.user.line_list) > 1 or self.user.line_list[0] > 0:
-			# Determine if the board was cleared.
-			for i in range(2, 12):
-				if self.cells[21][i] is not None:
-					clearflag = False
-					break
-			else: clearflag = True
-			# Evaluate combo.
-			self.user.eval_clear_score(clearflag)
-			self.user.combo_ctr += 1
-			self.user.current_combo = self.user.combo_factor ** self.user.combo_ctr
-		else: 
-			# If no lines were cleared, break combo.
-			self.user.current_combo = 1.0
-			self.user.combo_ctr = 0
+			if not cleared: continue
+			# Insert line clearing animation here.
+			yield True
+			# If the method is naive, then don't proceed.
+			if self.user.cleartype < 1: continue
+			while True:
+				# Tempgrid is the list of all shapes that have not fallen all the way down yet.
+				tempgrid = [ ]
+				# Drop all floating pieces via the tempgrid.
+				self.cascade(tempgrid, base_row)
+				# Copy all of the tempgrid's shapes back to the matrix.
+				if len(tempgrid) > 0:
+					for shape in tempgrid:
+						self.paste_shape(shape)
+					# Display intermediate drops so the user can see the combo, via doing this as a coroutine.
+					yield True
+				else: break
+			self.user.line_list.append(0)
+			# If the tempgrid list is empty, that means that all the blocks have fallen. Check if the fallen blocks caused another line clear.
+		# Evaluate score from the last clear.
+		self.user.eval_clear_score(self.check_cleared())
 		# Once done clearing lines, set the clearing flag to False to avoid the StopIteration exception from being raised.
 		yield False
 
@@ -417,9 +428,8 @@ class Grid (AnimatedSprite):
 		self.draw(screen)
 		for i in range(22):
 			for j in range(2, 12):
-				if self.cells[i][j] is not None:
-					block = self.cells[i][j]
-					block.relpos = [j, i]
-					if i > 1:
-						block.set(bottomleft = (self.rect.centerx + block.rect.width * (block.relpos[0] - 7), self.rect.bottom - 20 + block.rect.height * (block.relpos[1] - 21)))
-						block.draw(screen)
+				if self.cells[i][j] is None: continue
+				block = self.cells[i][j]
+				block.relpos = [j, i]
+				block.set(bottomleft = (self.rect.centerx + block.rect.width * (j - 7), self.rect.bottom - 20 + block.rect.height * (i - 21)))
+				if i > 1: block.draw(screen)
