@@ -2,6 +2,14 @@
 A project meant to serve as a way for me to learn how to make a game using the pygame module.
 This is intended to be a Tetris clone.
 
+### Controls:
+LEFT and RIGHT arrow keys to shift tetrimino left and right.
+DOWN arrow key to speed up falling tetrimino.
+Z or LCTRL keys to rotate tetrimino counter-clockwise. 
+X or UP keys to rotate tetrimino clockwise.
+SPACE key to drop tetrimino, and LSHIFT to hold tetrimino.
+ESCAPE key to pause.
+
 ### Feature Tracker:
 - (Done) Grid collision detection and piece shifting.
 - (Done) SRS implementation of rotation and spawn logic.
@@ -21,6 +29,6 @@ This is intended to be a Tetris clone.
 - A bug occurs when the player holds either the shift left or shift right keys to "stick" the active piece against a wall or the grid blocks will cause it to fall slower.
 - The score system has a weird bug that causes it to oversize certain cascade scores in arcade and free mode.
 
-#### Current Version: 1.1.6
+#### Current Version: 1.1.7
 
 Let me know if there are any other problems!
