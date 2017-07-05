@@ -141,16 +141,10 @@ class Shape (FreeGroup):
 		# eval() usable expression to create a similar object.
 		return "Shape("+repr(self.form)+", "+repr(self.state)+", "+repr(self.pos)+")"
 
-	def __hash__ (self):
-		# Binary representation of a shape of the format FFFSSPPPPPPPPP up to 11011101100111.
-		if self.form < 7:
-			return (self.form << 11) + (self.state << 9) + (self.pos[1] * 15 + self.pos[0])
-		else: raise TypeError('Aggregate or empty shapes are not hashable!')
-
 	def __eq__ (self, other):
 		# Might be useful in comparing freeshape, newshape, and ghostshape sometime.
 		if isinstance(other, Shape):
-			return hash(self) == hash(other)
+			return (self.form, self.shape, self.pos) == (other.form, other.shape, other.pos)
 		else: raise TypeError(other.__class__.__name__+' cannot be compared to a Shape object!')
 
 	def copy (self, linkrule = True, ghost = False):
