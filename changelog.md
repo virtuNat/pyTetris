@@ -106,4 +106,7 @@ Alpha 1.1.6:
 
 Alpha 1.1.7:
 - Object-Orieted Style code-side optimization.
+- Added a ClearSprite that performs the line clearing animation.
+- Fixed the gravity timers being longer by one extra frame.
+- Allowed freeshape to update after gravity ticks, fixing the longstanding DAS-related "sticky" bug.
 
