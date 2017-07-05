@@ -51,7 +51,7 @@ class User:
 		self.debug = True
 		self.reset()
 
-	def __repr__ (self):
+	def __str__ (self):
 		return "<User instance running the <"+self.state+"> state.>"
 
 	def reset (self):
@@ -150,7 +150,7 @@ class Tetris:
 		self.grid = Grid(user)
 		self.set_data()
 
-	def __repr__ (self):
+	def __str__ (self):
 		return "<Tetris game engine object with id "+str(id(self))+">"
 
 	def set_data (self):
@@ -201,6 +201,8 @@ class Tetris:
 
 		self.grav_frame = 0 # The gravity frame counter.
 		self.grav_delay = self.fall_delay # Currently used gravity delay.
+		self.gmax = 0
+		self.gfs = [ ]
 
 	def gen_shapelist (self):
 		# Generate a 'bag' of one of each tetrimino shape in random order.
@@ -215,7 +217,7 @@ class Tetris:
 		if isinstance(shape, Shape):
 			self.freeshape = shape
 		else:
-			self.freeshape = Shape(shape, self.user.linktiles)
+			self.freeshape = Shape(shape, linkrule = self.user.linktiles)
 		self.newshape = self.freeshape.copy(self.user.linktiles)
 		self.ghostshape = self.freeshape.copy(self.user.linktiles, True)
 		self.eval_ghost(False)
@@ -224,35 +226,36 @@ class Tetris:
 
 	def next_shape (self):
 		# Increments the shape list.
-		self.set_shape(self.nextshapes.pop(0))
-		if len(self.nextshapes) < 7:
-			self.nextshapes.extend(self.gen_shapelist())
+		s = self.nextshapes.pop(0)
+		if self.entry_flag: self.set_shape(s)
+		if len(self.nextshapes) < 7: self.nextshapes.extend(self.gen_shapelist())
 
 	def hold_shape (self):
 		# Holds a tetrimino in storage until retrieved.
-		if self.entry_flag:
-			if self.storedshape is None:
-				self.storedshape = Shape(self.newshape.form, self.user.linktiles)
-				self.next_shape()
-			# If storage already has a tetrimino, swap with current active one.
-			else:
-				# You can only swap once per piece and can't swap if it's the same shape as the active piece.
-				if not self.hold_lock and self.storedshape.form != self.freeshape.form:
-					self.hold_lock = True
-					self.freeshape = Shape(self.storedshape.form, self.user.linktiles)
-					self.storedshape = Shape(self.newshape.form, self.user.linktiles)
-					self.newshape = self.freeshape.copy(self.user.linktiles)
+		if self.storedshape is None:
+			self.storedshape = Shape(self.newshape.form if self.entry_flag else self.nextshapes[0].form, linkrule = self.user.linktiles)
+			self.next_shape()
 		else:
-			# Allow pieces to be swapped during spawn delay. Somewhat brute force.
-			if self.storedshape is None:
-				self.storedshape = Shape(self.nextshapes[0].form, self.user.linktiles)
-				self.nextshapes.pop(0)
-				if len(self.nextshapes) < 7:
-					self.nextshapes.extend(self.gen_shapelist())
-			else:
-				holdform = self.storedshape.form
-				self.storedshape = Shape(self.nextshapes[0].form, self.user.linktiles)
-				self.nextshapes[0] = Shape(holdform, self.user.linktiles)
+			# If storage already has a tetrimino, swap with current active one.
+			if not self.hold_lock and self.storedshape.form != self.freeshape.form:
+				self.hold_lock = True
+				if self.entry_flag:
+					# You can only swap once per piece and can't swap if it's the same shape as the active piece.
+					self.freeshape = Shape(self.storedshape.form, linkrule = self.user.linktiles)
+					self.storedshape = Shape(self.newshape.form, linkrule = self.user.linktiles)
+					self.newshape = self.freeshape.copy(self.user.linktiles)
+				else:
+					# Allow pieces to be swapped during spawn delay.
+					self.freeshape.form = self.storedshape.form
+					self.storedshape = Shape(self.nextshapes[0].form, linkrule = self.user.linktiles)
+					self.nextshapes[0] = Shape(self.freeshape.form, linkrule = self.user.linktiles)
+
+	def check_collision (self, shape):
+		# Check if the shape to be evaluated is intersecting with any other blocks on the grid.
+		for pos in shape.poslist:
+			if self.grid[pos[1]][pos[0]] is not None:
+				return True
+		else: return False
 
 	def eval_input (self):
 		# Evaluates player input.
@@ -297,6 +300,10 @@ class Tetris:
 					self.user.lines_cleared += 50
 				if event.key == pygame.K_9: # Add garbage line
 					self.grid.add_garbage()
+					# Prevent intersections.
+					if self.check_collision(self.freeshape):
+						self.freeshape.translate(( 0,-1))
+						self.newshape.translate(( 0,-1))
 					self.grid.update()
 				elif event.key == pygame.K_0: # Clear board
 					self.grid.set_cells()
@@ -331,29 +338,22 @@ class Tetris:
 			self.shift_frame = self.shift_fdelay
 			if self.shift_dir == 'l':
 				self.newshape.translate((-1, 0))
-			if self.shift_dir == 'r':
+			elif self.shift_dir == 'r':
 				self.newshape.translate(( 1, 0))
-
-		if self.entry_flag:
-			# Prevent active tetrimino from sliding into gridblocks.
-			for block in self.newshape.blocks:
-				if self.collision_test(block, self.newshape):
-					self.newshape = self.freeshape.copy(self.user.linktiles)
-					break
-			else:
-				self.freeshape = self.newshape.copy(self.user.linktiles)
+		# Prevent active tetrimino from sliding into gridblocks.
+		if self.check_collision(self.newshape):
+			self.newshape.pos = self.freeshape.pos[:]
+		else:
+			self.freeshape.pos = self.newshape.pos[:]
 
 	def eval_ghost (self, show = True):
 		# Evaluate and display the position of the ghost tetrimino.
 		self.ghostshape = self.freeshape.copy(self.user.linktiles, True)
-		ghost_collide = False
-		while not ghost_collide:
+		while True:
 			self.ghostshape.translate(( 0, 1))
-			for block in self.ghostshape.blocks:
-				if self.collision_test(block, self.ghostshape):
-					ghost_collide = True
-					break
-		self.ghostshape.translate(( 0,-1))
+			if self.check_collision(self.ghostshape):
+				self.ghostshape.translate(( 0,-1))
+				break
 		if show and self.user.showghost: self.ghostshape.draw()
 
 	def eval_tspin (self):
@@ -361,15 +361,11 @@ class Tetris:
 		# and the piece is a T, check if it's in a position for a valid T-spin.
 		if not self.user.twist_flag and self.freeshape.form == 2:
 			cornercount = 0
-			if self.grid.cells[self.freeshape.pos[1] - 1][self.freeshape.pos[0] - 1] is not None: cornercount += 1
-			if self.grid.cells[self.freeshape.pos[1] - 1][self.freeshape.pos[0] + 1] is not None: cornercount += 1
-			if self.grid.cells[self.freeshape.pos[1] + 1][self.freeshape.pos[0] - 1] is not None: cornercount += 1
-			if self.grid.cells[self.freeshape.pos[1] + 1][self.freeshape.pos[0] + 1] is not None: cornercount += 1
+			if self.grid[self.freeshape.pos[1] - 1][self.freeshape.pos[0] - 1] is not None: cornercount += 1
+			if self.grid[self.freeshape.pos[1] - 1][self.freeshape.pos[0] + 1] is not None: cornercount += 1
+			if self.grid[self.freeshape.pos[1] + 1][self.freeshape.pos[0] - 1] is not None: cornercount += 1
+			if self.grid[self.freeshape.pos[1] + 1][self.freeshape.pos[0] + 1] is not None: cornercount += 1
 			if cornercount == 3: self.user.tspin_flag = True
-
-	def collision_test (self, block, shape):
-		# Shortcut if statement for collision test loop.
-		return self.grid.cells[block.relpos[1] + shape.pos[1]][block.relpos[0] + shape.pos[0]] is not None
 
 	def test_kicks (self, poslist):
 		# Test four kick positions.
@@ -379,16 +375,11 @@ class Tetris:
 				# Disable the floor kick flag if the position would make the piece go up.
 				if pos[1] < 0: self.floor_kick = False
 				# Set the test position to the original position before translating.
-				self.newshape.pos = self.freeshape.pos
+				self.newshape.pos = self.freeshape.pos[:]
 				self.newshape.translate(pos)
 				# Collision test.
-				for block in self.newshape.blocks:
-					if self.collision_test(block, self.newshape):
-						self.collision = True
-						break
-				else:
-					self.collision = False
-					break
+				self.collision = self.check_collision(self.newshape)
+				if not self.collision: break
 	
 	def wall_kick (self):
 		# Arika Implementation of wall kicks for I-symmetricity about the y-axis.
@@ -398,10 +389,7 @@ class Tetris:
 		# The O piece cannot rotate, and therefore cannot be kicked.
 		if self.freeshape.state != self.newshape.state and self.freeshape.form != 1:
 			# If the rotation would put the piece in an invalid position:
-			for block in self.newshape.blocks:
-				if self.collision_test(block, self.newshape):
-					self.collision = True
-					break
+			self.collision = self.check_collision(self.newshape)
 			if self.user.enablekicks:
 				if self.collision:
 					self.user.twist_flag = True
@@ -453,28 +441,23 @@ class Tetris:
 				else: self.user.twist_flag = False
 				# Wall kicks reset the gravity timer.
 				if self.user.twist_flag: self.grav_frame = 1
-
-			if self.collision: self.newshape = self.freeshape.copy(self.user.linktiles)
+			if self.collision: 
+				self.newshape = self.freeshape.copy(self.user.linktiles)
 			else: 
 				self.freeshape = self.newshape.copy(self.user.linktiles)
 				self.eval_tspin()
 
 	def eval_gravity (self):
-		# Move shape one block down when gravity ticks.
+		# Test if the next gravity tick will cause a collision.
 		self.newshape.translate(( 0, 1))
-		for block in self.newshape.blocks:
-			# If collision occurs due to the gravity timer running out:
-			if self.collision_test(block, self.newshape):
-				gravflag = True
-				break
-		else: gravflag = False
+		gravflag = self.check_collision(self.newshape)
 		self.newshape.translate(( 0,-1))
 		return gravflag
 
 	def eval_fallen (self, posdif):
 		# Evaluates what happens to a tetrimino when it has just fallen.
 		# If the hard drop was triggered, move the active piece immediately to the ghost image.
-		if self.user.hard_flag: self.freeshape = self.ghostshape.copy(self.user.linktiles)
+		if self.user.hard_flag: self.freeshape.pos = self.ghostshape.pos[:]
 		# Reset DAS if the user has not let go of the key yet.
 		if self.shift_frame == 0 and self.shift_dir != '0':
 			self.shift_frame = self.shift_delay
@@ -501,56 +484,34 @@ class Tetris:
 
 	def eval_block (self):
 		# If the shape spawns on top of placed blocks, it's game over.
-		obstructed = False
-		for block in self.freeshape.blocks:
-			if self.collision_test(block, self.freeshape):
-				obstructed = True
-				break
+		obstructed = self.check_collision(self.freeshape)
 		# If the shape did not spawn on top of blocks, see if it can move.
 		if not obstructed:
 			trapped = True
 			# Test if a line clear would be caused by the shape's initial position.
-			if self.freeshape.form == 0:
-				rlen = 3 # Horizontal length of second row of the block - 1
-				bcell = 5 # Leftmost block
-			elif self.freeshape.form == 1 or self.freeshape.form == 4:
-				rlen = 2
-				bcell = 5
-			elif self.freeshape.form == 3:
-				rlen = 1
-				bcell = 5
-			else: 
-				rlen = 1
-				bcell = 6
+			# I: XXXX O: OXXO T: XXXO S: XXOO Z: OXXO J: XXXO L: XXXO
+			f = self.freeshape.form
+			# Horizontal length of second row of the block - 1
+			rlen = 3 if f == 0 else 2 if f == 2 or f > 4 else 1
+			# Leftmost block
+			bcell = 6 if f == 1 or f == 4 else 5
 			# If a line could be cleared by the shape's initial position, don't care if it's blocked.
 			for i in range(2, 12):
-				if (i < bcell or i > bcell + rlen) and self.grid.cells[1][i] is None:
+				if (i < bcell or i > bcell + rlen) and self.grid[1][i] is None:
 					break
 			else: trapped = False
-			if trapped:
-				# Can it move down?
+			if trapped: # Can it move down?
 				self.newshape.translate(( 0, 1))
-				for block in self.newshape.blocks:
-					if self.collision_test(block, self.newshape):
-						break
-				else: trapped = False
-			if trapped:
-				# Can it move right?
+				trapped = self.check_collision(self.newshape)
+			if trapped: # Can it move right?
 				self.newshape.translate(( 1,-1))
-				for block in self.newshape.blocks:
-					if self.collision_test(block, self.newshape):
-						break
-				else: trapped = False
-			if trapped:
-				# Can it move left?
+				trapped = self.check_collision(self.newshape)
+			if trapped: # Can it move left?
 				self.newshape.translate((-2, 0))
-				for block in self.newshape.blocks:
-					if self.collision_test(block, self.newshape):
-						break
-				else: trapped = False
+				trapped = self.check_collision(self.newshape)
 			# If the shape is blocked and can't clear a line, game over.
 			if trapped: self.user.state = 'loss_menu'
-			self.newshape = self.freeshape.copy(self.user.linktiles)
+			self.newshape.pos = self.freeshape.pos[:]
 		else:
 			self.user.state = 'loss_menu'
 
@@ -588,7 +549,7 @@ class Tetris:
 			for i in range((self.user.level + 1) // 25): self.grid.add_garbage()
 			# Increase game speed based on level.
 			self.fall_delay = 45 - (40 * self.user.level // 180) if self.user.level < 180 else 5
-			self.soft_delay = 6 - (6 * self.user.level // 90) if self.user.level < 90 else 0
+			self.soft_delay = 6 - (5 * self.user.level // 90) if self.user.level < 90 else 1
 			self.entry_delay = 30 - (20 * self.user.level // 150) if self.user.level < 150 else 10
 			self.shift_delay = 25 - (17 * self.user.level // 120) if self.user.level < 120 else 8
 			self.shift_fdelay = 4 - (3 * self.user.level // 60) if self.user.level < 60 else 1
@@ -597,9 +558,10 @@ class Tetris:
 		if self.user.level >= 64:
 			if self.line_frame == 0:
 				self.grid.add_garbage()
-				# Make sure that the piece doesn't go IN the matrix when a garbage line pops up.
-				for block in self.freeshape.blocks:
-					if self.collision_test(block, self.freeshape): self.freeshape.translate(( 0,-1))
+				# Prevent intersections.
+				if self.check_collision(self.freeshape):
+					self.freeshape.translate(( 0,-1))
+					self.newshape.translate(( 0,-1))
 				# At max level, make them spawn faster.
 				if self.user.level >= 256: self.line_frame = 120
 				elif self.user.level >= 192: self.line_frame = 180
@@ -614,10 +576,10 @@ class Tetris:
 		# Display relevant stuff.
 		lalign = 113
 		ralign = 253
-		talign = self.grid.rect.top + 177
+		talign = self.grid.rect.y + 177
 		spacing = 30
 		# Display current game mode.
-		self.render_text(self.user.gametype.capitalize() + ' Mode', 0xFFFFFF, midtop = (s_rect.centerx, self.grid.rect.top + 15))
+		self.render_text(self.user.gametype.capitalize() + ' Mode', 0xFFFFFF, midtop = (s_rect.centerx, self.grid.rect.y + 15))
 		# Display current score.
 		self.render_text('Score:', 0xFFFFFF, topleft = (lalign, talign))
 		self.render_text('{}'.format(self.user.score), 0xFFFFFF, topright = (ralign, talign + spacing))
@@ -641,13 +603,16 @@ class Tetris:
 		# Display active piece.
 		if self.entry_flag and not self.clearing: self.freeshape.draw()
 		# Display three next pieces.
-		self.render_text('Up Next:', 0xFFFFFF, topleft = (584, self.grid.rect.top + 60))
+		self.render_text('Up Next:', 0xFFFFFF, topleft = (584, self.grid.rect.y + 60))
 		for i in range(3):
-			self.nextshapes[i].draw([592, self.grid.rect.top + 126 + (i * 87)], True)
+			self.nextshapes[i].draw([592, self.grid.rect.y + 126 + (i * 87)], True)
 		# Display held piece.
-		self.render_text('Held:', 0xFFFFFF, topleft = (162, self.grid.rect.top + 60))
+		self.render_text('Held:', 0xFFFFFF, topleft = (162, self.grid.rect.y + 60))
 		if self.storedshape is not None:
-			self.storedshape.draw([158, self.grid.rect.top + 126], True)
+			self.storedshape.draw([158, self.grid.rect.y + 126], True)
+
+		# Show current fps.
+		self.render_text(str(int(round(clock.get_fps(), 0))), 0xFFFFFF, bottomright = (s_rect.w - 5, s_rect.h - 5))
 
 	def eval_pause (self):
 		# Pause game after evaluating frame.
@@ -672,32 +637,32 @@ class Tetris:
 		self.grid.update()		
 		# Evaluate inputs and kick if necessary.
 		self.eval_input()
+		# Evaluate translation.
+		self.eval_shift()
 		# Skip majority of game code if the lineclearer object is active- aka the Grid.clear_lines() generator.
 		if not self.clearing:
-			# Evaluate translation.
-			self.eval_shift()
 			# If the spawn delay isn't active:
 			if self.entry_flag:
 				# Evaluate ghost tetrimino and display it.
 				self.eval_ghost()
 				# Set the gravity delay to the appropriate value depending on whether soft drop is active or not.
-				if self.soft_drop: self.grav_delay = self.soft_delay
-				else: self.grav_delay = self.fall_delay
+				self.grav_delay = self.soft_delay if self.soft_drop else self.fall_delay
 
 				# Evaluate gravity.
 				if self.eval_gravity(): # If collision will occur due to gravity:
-					if self.grav_frame < self.fall_delay: self.grav_frame += 1 # Use default timer instead of the soft drop timer.
+					if self.grav_frame < self.fall_delay - 1: self.grav_frame += 1 # Use default timer instead of the soft drop timer.
 					else: # Evaluate dropped piece.
 						self.grav_frame = 0
 						self.eval_fallen(self.ghostshape.pos[1] - self.soft_pos if self.soft_drop else 0)
 
 				else: # If there won't be gravity collision:
-					if self.grav_frame < self.grav_delay: self.grav_frame += 1
+					if self.grav_frame < self.grav_delay - 1: self.grav_frame += 1
 					else: # Move shape down.
 						self.grav_frame = 0
+						self.freeshape.translate((0, 1))
 						self.newshape.translate((0, 1))
 			# If it is, count down the number of frames until it's time to deactivate it.
-			elif self.entry_frame > 0:
+			elif self.entry_frame > 1:
 				self.entry_frame -= 1
 			else:
 				self.entry_flag = True
@@ -715,8 +680,11 @@ class Tetris:
 				# Increment timer for non-timed modes so it could be appended to the high score.
 				self.user.timer += clock.get_time()
 		else:
-			clock.tick(30)
-			self.clearing = next(self.line_clearer)
+			if len(self.grid.csprts):
+				self.grid.animate_clears()
+			else:
+				clock.tick(45)
+				self.clearing = next(self.line_clearer)
 		# Display heads-up information.
 		self.display()
 		self.eval_loss()
@@ -731,7 +699,6 @@ def init ():
 		The function init() returns an instance of TetrisGame, an instance of the game as a whole.
 		"""
 		# Initialize game objects.
-		clock = clock
 		user = User()
 		play_menu = menu.PlayMenu(user)
 		score_menu = menu.HiScoreMenu(user)
@@ -740,18 +707,17 @@ def init ():
 		loss_menu = menu.LossMenu(user)
 		main_menu = menu.MainMenu(user, score_menu)
 		game = Tetris(user, pause_menu, save_menu, loss_menu)
-		quit = quit
 
-		def __repr__(self):
-			return "pyTetris project by virtuNat.\nCurrent fps: "+clock.get_fps()+"\nCurrent game state: <"+self.user.state+">"
+		def __str__(self):
+			return "pyTetris project by virtuNat.\nCurrent fps: "+str(clock.get_fps())+"\nCurrent game state: <"+self.user.state+">"
 
 		def run (self):
 			# Run the program loop. 
 			# User state system allows menu changing to be as simple as running an eval()
 			# as long as the state name matches a menu variable name.
 			while self.user.state != 'quit':
-				self.clock.tick(60)
+				clock.tick(60)
 				eval('self.' + self.user.state).run()
 			# Clean up when the program ends.
-			self.quit()		
+			quit()		
 	return TetrisGame()

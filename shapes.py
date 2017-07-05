@@ -14,7 +14,7 @@ class Block (FreeSprite):
 	block_src = load_image('tileset.png')
 
 	def __init__(self, relpos, color, links = [ ], linkrule = True, ghost = False, fallen = False):
-		super().__init__(self.block_src, pygame.Rect(0, 0, 25, 25))
+		super().__init__(self.block_src, (0, 0, 25, 25))
 		self.relpos = relpos # Position of the block relative to a predefined point on the grid, or the "center" of the shape.
 		self.color = color # Block color.
 		self.links = links # Which direction a block is linked to. 0, 1, 2, 3, for L, U, R, D respectively.
@@ -22,8 +22,13 @@ class Block (FreeSprite):
 		self.fallen = fallen # Used by the line clear function.
 		self.update(color, linkrule, ghost)
 
-	def __repr__ (self):
+	def __str__ (self):
+		# Debug info that is easy to read.
 		return "Tetris Block at" + str(self.relpos)
+
+	def __repr__ (self):
+		# eval() usable expression to create a block similar to this.
+		return "Block("+repr(self.relpos)+", "+repr(self.color)+", "+repr(self.links)+")"
 
 	def copy (self, linkrule = True, ghost = False):
 		# Create new Block object that is the same as this one.
@@ -54,7 +59,7 @@ class Block (FreeSprite):
 				else: form = 12
 			else: raise IndexError('Having more than three links on a block does not a tetrimino make.')
 		else: form = 0
-		self.cliprect = pygame.Rect(color, form * 25, 25, 25)
+		self.cliprect.topleft = (color, form * 25)
 		# if ghost: self.image.set_alpha(191)
 
 class Shape (FreeGroup):
@@ -70,11 +75,11 @@ class Shape (FreeGroup):
 
 	If this is a temporary aggregate of blocks during clears, the position is used as a reference point for translation.
 	"""
-	def __init__ (self, form = 7, linkrule = True):
+	def __init__ (self, form = 7, state = 0, pos = [6, 1], linkrule = True):
 		super().__init__()
-		self.pos = [6, 1] # Center of rotation.
+		self.pos = pos # Center of rotation.
 		self.form = form # Tetrimino shape.
-		self.state = 0 # Current rotation relative to spawn rotation.
+		self.state = state # Current rotation relative to spawn rotation.
 
 		if form == 0: # I
 			self.add([
@@ -127,9 +132,26 @@ class Shape (FreeGroup):
 			# List of grid coordinates for the blocks' true positions.
 			return [[self.pos[i] + block.relpos[i] for i in range(2)] for block in self]
 
-	def __repr__ (self):
+	def __str__ (self):
+		# Debug info that is easy to read.
 		shapetext = 'IOTSZJL'[self.form] if self.form < 7 else 'Temporary Aggregate'
 		return shapetext + " Tetrimino with blocks at: " + repr(self.poslist)
+
+	def __repr__ (self):
+		# eval() usable expression to create a similar object.
+		return "Shape("+repr(self.form)+", "+repr(self.state)+", "+repr(self.pos)+")"
+
+	def __hash__ (self):
+		# Binary representation of a shape of the format FFFSSPPPPPPPPP up to 11011101100111.
+		if self.form < 7:
+			return (self.form << 11) + (self.state << 9) + (self.pos[1] * 15 + self.pos[0])
+		else: raise TypeError('Aggregate or empty shapes are not hashable!')
+
+	def __eq__ (self, other):
+		# Might be useful in comparing freeshape, newshape, and ghostshape sometime.
+		if isinstance(other, Shape):
+			return hash(self) == hash(other)
+		else: raise TypeError(other.__class__.__name__+' cannot be compared to a Shape object!')
 
 	def copy (self, linkrule = True, ghost = False):
 		# Copy this shape, creating a new Shape object in the process.
@@ -179,7 +201,7 @@ class Shape (FreeGroup):
 				anchor[1] -= 12
 			elif self.form > 1:
 				anchor[0] += 12
-		for block in self: block.set(topleft = (anchor[0] + block.relpos[0] * block.rect.width, anchor[1] + block.relpos[1] * block.rect.height))
+		for block in self: block.set(topleft = (anchor[0] + block.relpos[0] * block.rect.w, anchor[1] + block.relpos[1] * block.rect.h))
 			
 	def draw (self, anchor = None, forced = False):
 		# Draw the tetrimino to the screen.
@@ -191,6 +213,20 @@ class Shape (FreeGroup):
 	def update (self, linkrule = True):
 		# Update the textures of this tetrimino.
 		for block in self: block.update(block.color, linkrule, block.ghost)
+
+class ClearSprite (AnimatedSprite):
+	"Sprite that performs the clearing animation."
+	src = load_image('clear.png', colorkey = 0xFF00FF)
+
+	def __init__(self, **anchors):
+		super().__init__(pygame.Surface((250, 25)), cliprect = (0, 0, 25, 25), **anchors)
+		self.image.set_colorkey(0xFF00FF)
+		self.frames = 6
+
+	def draw (self, surf = screen):
+		self.image.fill(0xFF00FF)
+		for i in range(10): self.image.blit(self.src, (i * 25, 0), self.cliprect)
+		surf.blit(self.image, self.rect)
 
 class Grid (AnimatedSprite):
 	"""
@@ -208,6 +244,7 @@ class Grid (AnimatedSprite):
 	def __init__(self, user):
 		super().__init__(self.image, self.rect)
 		self.user = user
+		self.csprts = [ ]
 		self.set_cells()
 
 	def __getitem__ (self, key):
@@ -375,6 +412,8 @@ class Grid (AnimatedSprite):
 			for i in range(21, -1, -1):
 				# Once a row is detected to be full, clear it.
 				if self.is_full_row(i):
+					# Add a ClearSprite to show the row being cleared.
+					self.csprts.append(ClearSprite(bottomleft = (self.rect.centerx - 125, self.rect.bottom - 20 + 25 * (i - 21))))
 					garbagerow = self.is_garbage_row(i)
 					# Increment the cleared lines counter.
 					self.user.line_list[-1] += 1
@@ -427,6 +466,15 @@ class Grid (AnimatedSprite):
 		# Once done clearing lines, set the clearing flag to False to avoid the StopIteration exception from being raised.
 		yield False
 
+	def animate_clears (self):
+		# Animate and draw the ClearSprite objects.
+		for i in range(len(self.csprts) - 1, -1, -1):
+			self.csprts[i].draw()
+			try:
+				self.csprts[i].animate()
+			except StopIteration:
+				self.csprts.pop(i)
+
 	def update (self):
 		# Display the grid background and constituent blocks.
 		self.draw(screen)
@@ -435,5 +483,5 @@ class Grid (AnimatedSprite):
 				if self[i][j] is None: continue
 				block = self[i][j]
 				block.relpos = [j, i]
-				block.set(bottomleft = (self.rect.centerx + block.rect.width * (j - 7), self.rect.bottom - 20 + block.rect.height * (i - 21)))
+				block.set(bottomleft = (self.rect.centerx + block.rect.w * (j - 7), self.rect.bottom - 20 + block.rect.h * (i - 21)))
 				if i > 1: block.draw(screen)

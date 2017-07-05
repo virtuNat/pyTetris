@@ -26,14 +26,14 @@ class MainMenu (Menu):
 		hmargin = 15 # horizontal margin in pixels
 		tmargin = 20 # top margin in pixels
 		spacing = 5 # space between selections in pixels
-		height = (self.rect.height - 2 * tmargin - 4 * spacing) / 5 # height of selections in pixels
+		height = (self.rect.h - 2 * tmargin - 4 * spacing) / 5 # height of selections in pixels
 
 		self.selections = [[
-			MenuOption(self, 'play', 'Start Game', (hmargin, tmargin), (self.rect.width - 2 * hmargin, height)),
-			MenuOption(self, 'help', 'How to Play', (hmargin, tmargin + (spacing + height)), (self.rect.width - 2 * hmargin, height)), 
-			MenuOption(self, 'hiscore', 'High Scores', (hmargin, tmargin + 2 * (spacing + height)), (self.rect.width - 2 * hmargin, height)), 
-			MenuOption(self, 'settings', 'Game Settings', (hmargin, tmargin + 3 * (spacing + height)), (self.rect.width - 2 * hmargin, height)),
-			MenuOption(self, 'quit', 'Quit', (hmargin, tmargin + 4 * (spacing + height)), (self.rect.width - 2 * hmargin, height))]]
+			MenuOption(self, 'play', 'Start Game', (hmargin, tmargin), (self.rect.w - 2 * hmargin, height)),
+			MenuOption(self, 'help', 'How to Play', (hmargin, tmargin + (spacing + height)), (self.rect.w - 2 * hmargin, height)), 
+			MenuOption(self, 'hiscore', 'High Scores', (hmargin, tmargin + 2 * (spacing + height)), (self.rect.w - 2 * hmargin, height)), 
+			MenuOption(self, 'settings', 'Game Settings', (hmargin, tmargin + 3 * (spacing + height)), (self.rect.w - 2 * hmargin, height)),
+			MenuOption(self, 'quit', 'Quit', (hmargin, tmargin + 4 * (spacing + height)), (self.rect.w - 2 * hmargin, height))]]
 		self.set_range()
 
 	def eval_input (self):
@@ -86,9 +86,9 @@ class PlayMenu (Menu):
 		height = 80
 
 		self.selections = [
-			[MenuOption(self, 'arcade', 'Arcade Mode', (hmargin, tmargin), ((self.rect.width - (2 * (spacing + hmargin))) / 3, height))], 
-			[MenuOption(self, 'timed', 'Timed Mode', (hmargin + spacing + (self.rect.width - (2 * (spacing + hmargin))) / 3, tmargin), ((self.rect.width - (2 * (spacing + hmargin))) / 3, height))],
-			[MenuOption(self, 'free', 'Free Mode', (hmargin + 2 * spacing + (2 * (self.rect.width - (2 * (spacing + hmargin))) / 3), tmargin), ((self.rect.width - (2 * (spacing + hmargin))) / 3, height))]]
+			[MenuOption(self, 'arcade', 'Arcade Mode', (hmargin, tmargin), ((self.rect.w - (2 * (spacing + hmargin))) / 3, height))], 
+			[MenuOption(self, 'timed', 'Timed Mode', (hmargin + spacing + (self.rect.w - (2 * (spacing + hmargin))) / 3, tmargin), ((self.rect.w - (2 * (spacing + hmargin))) / 3, height))],
+			[MenuOption(self, 'free', 'Free Mode', (hmargin + 2 * spacing + (2 * (self.rect.w - (2 * (spacing + hmargin))) / 3), tmargin), ((self.rect.w - (2 * (spacing + hmargin))) / 3, height))]]
 		self.set_range()
 
 	def eval_input (self):
@@ -155,7 +155,7 @@ class HiScoreMenu (Menu):
 
 	@Menu.render
 	def display_scores (self, surf):
-		self.render_text(self.selected.action.capitalize() + ' Mode', 0x000000, surf, midtop = (self.rect.width / 2, 30))
+		self.render_text(self.selected.action.capitalize() + ' Mode', 0x000000, surf, midtop = (self.rect.w / 2, 30))
 		self.render_text('Name:', 0x000000, surf, topleft = (25, 70))
 		self.render_text('Score:', 0x000000, surf, topleft = (185, 70))
 		self.render_text('Lines:', 0x000000, surf, topleft = (390, 70))
@@ -163,9 +163,9 @@ class HiScoreMenu (Menu):
 		d_scores = self.scorelist[self.selection[0]]
 		for i in range(10):
 			self.render_text('{}'.format(d_scores[i][0]), 0x000000, surf, topleft = (30, 120 + i * 35))
-			self.render_text('{}'.format(d_scores[i][1]), 0x000000, surf, topright = (self.rect.width / 2 - 30, 120 + i * 35))
-			self.render_text('{}'.format(d_scores[i][2]), 0x000000, surf, topright = (self.rect.width - 210, 120 + i * 35))
-			self.render_text('{}:{:02d}:{:02d}'.format(d_scores[i][3]//6000, d_scores[i][3]//100%60, d_scores[i][3]%100), 0x000000, surf, topright = (self.rect.width - 30, 120 + i * 35))
+			self.render_text('{}'.format(d_scores[i][1]), 0x000000, surf, topright = (self.rect.w / 2 - 30, 120 + i * 35))
+			self.render_text('{}'.format(d_scores[i][2]), 0x000000, surf, topright = (self.rect.w - 210, 120 + i * 35))
+			self.render_text('{}:{:02d}:{:02d}'.format(d_scores[i][3]//6000, d_scores[i][3]//100%60, d_scores[i][3]%100), 0x000000, surf, topright = (self.rect.w - 30, 120 + i * 35))
 
 	def run (self):
 		menu_bg.draw(screen)
@@ -201,10 +201,10 @@ class PauseMenu (Menu):
 		height = 60
 
 		self.selections = [[
-			MenuOption(self, 'resume', 'Resume Game', (hmargin, tmargin), (self.rect.width - 2 * hmargin, height)),
-			MenuOption(self, 'restart', 'Restart Game', (hmargin, tmargin + spacing + height), (self.rect.width - 2 * hmargin, height)),
-			MenuOption(self, 'options', 'Options', (hmargin, tmargin + 2 * (spacing + height)), (self.rect.width - 2 * hmargin, height)),
-			MenuOption(self, 'quit', 'Return to Menu', (hmargin, tmargin + 3 * (spacing + height)), (self.rect.width - 2 * hmargin, height))]]
+			MenuOption(self, 'resume', 'Resume Game', (hmargin, tmargin), (self.rect.w - 2 * hmargin, height)),
+			MenuOption(self, 'restart', 'Restart Game', (hmargin, tmargin + spacing + height), (self.rect.w - 2 * hmargin, height)),
+			MenuOption(self, 'options', 'Options', (hmargin, tmargin + 2 * (spacing + height)), (self.rect.w - 2 * hmargin, height)),
+			MenuOption(self, 'quit', 'Return to Menu', (hmargin, tmargin + 3 * (spacing + height)), (self.rect.w - 2 * hmargin, height))]]
 		self.set_range()
 
 	def set_bg (self, bg):
@@ -293,18 +293,18 @@ class SaveMenu (Menu):
 
 	@Menu.render
 	def display_score (self, surf):
-		self.render_text('You got the '+self.placestring+' place high score!', 0x000000, surf, midtop = (self.rect.width / 2, 15))
+		self.render_text('You got the '+self.placestring+' place high score!', 0x000000, surf, midtop = (self.rect.w / 2, 15))
 
 		self.render_text('Enter Name:', 0x000000, surf, topleft = (15, 40))
-		self.render_text('Score:', 0x000000, surf, topright = (self.rect.width / 2 - 40, 40))
-		self.render_text('Lines:', 0x000000, surf, topleft = (self.rect.width / 2 + 40, 40))
-		self.render_text('Time Taken:', 0x000000, surf, topright = (self.rect.width - 25, 40))
+		self.render_text('Score:', 0x000000, surf, topright = (self.rect.w / 2 - 40, 40))
+		self.render_text('Lines:', 0x000000, surf, topleft = (self.rect.w / 2 + 40, 40))
+		self.render_text('Time Taken:', 0x000000, surf, topright = (self.rect.w - 25, 40))
 
 		self.render_text(self.name, 0x000000, surf, topleft = (20, 65))
-		self.render_text(str(self.user.score), 0x000000, surf, topright = (self.rect.width / 2 - 20, 65))
-		self.render_text(str(self.user.lines_cleared), 0x000000, surf, topleft = (self.rect.width / 2 + 100, 65))
+		self.render_text(str(self.user.score), 0x000000, surf, topright = (self.rect.w / 2 - 20, 65))
+		self.render_text(str(self.user.lines_cleared), 0x000000, surf, topleft = (self.rect.w / 2 + 100, 65))
 		_time = self.eval_timer()
-		self.render_text('{}:{:02d}:{:02d}'.format(_time // 6000, _time // 100 % 60, _time % 100), 0x000000, surf, topright = (self.rect.width - 20, 65))
+		self.render_text('{}:{:02d}:{:02d}'.format(_time // 6000, _time // 100 % 60, _time % 100), 0x000000, surf, topright = (self.rect.w - 20, 65))
 
 	def run (self):
 		self.draw(screen)
@@ -328,9 +328,9 @@ class LossMenu (Menu):
 		height = 60
 
 		self.selections = [[
-			MenuOption(self, 'restart', 'Try Again?', (hmargin, tmargin + spacing + height), (self.rect.width - 2 * hmargin, height)),
-			MenuOption(self, 'settings', 'Game Settings', (hmargin, tmargin + 2 * (spacing + height)), (self.rect.width - 2 * hmargin, height)),
-			MenuOption(self, 'quit', 'Return to Menu', (hmargin, tmargin + 3 * (spacing + height)), (self.rect.width - 2 * hmargin, height))]]
+			MenuOption(self, 'restart', 'Try Again?', (hmargin, tmargin + spacing + height), (self.rect.w - 2 * hmargin, height)),
+			MenuOption(self, 'settings', 'Game Settings', (hmargin, tmargin + 2 * (spacing + height)), (self.rect.w - 2 * hmargin, height)),
+			MenuOption(self, 'quit', 'Return to Menu', (hmargin, tmargin + 3 * (spacing + height)), (self.rect.w - 2 * hmargin, height))]]
 		self.set_range()
 
 	def render_loss (self, bg):
@@ -358,8 +358,8 @@ class LossMenu (Menu):
 
 	@Menu.render
 	def rendered_text (self, surf):
-		self.render_text("Game Over!", 0xFFFFFF, surf, midtop = (self.rect.width / 2, 15))
-		self.render_text("Your score was: " + str(self.loss_score), 0xFFFFFF, surf, midtop = (self.rect.width / 2, 40))
+		self.render_text("Game Over!", 0xFFFFFF, surf, midtop = (self.rect.w / 2, 15))
+		self.render_text("Your score was: " + str(self.loss_score), 0xFFFFFF, surf, midtop = (self.rect.w / 2, 40))
 
 	def run (self):
 		screen.blit(self.loss_bg, (0, 0))

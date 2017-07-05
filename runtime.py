@@ -67,6 +67,7 @@ def load_image (name, alpha = None, colorkey = None):
 def render_text (obj, text, color, surf = screen, **anchors):
 	# Takes an object with a font attribute, and creates a text surface that it blits to a given surface.
 	# Can be added to any class as a method, provided that class instances have a font attribute.
+	if obj is None: obj = type('_', (), {'font': pygame.font.SysFont(None, 25)})()
 	if color < 2 ** 24:
 		# The output surface has 255 alpha by default, but it's possible to add an alpha channel to the color number.
 		color = color * 256 + 255
@@ -96,10 +97,13 @@ class FreeSprite (pygame.sprite.Sprite):
 	def __init__ (self, image, rect = None, cliprect = None, **initpos):
 		super().__init__()
 		self.image = image
-		self.rect = self.image.get_rect() if rect is None else rect
-		self.cliprect = pygame.Rect((0, 0), self.rect.size) if cliprect is None else cliprect
+		self.rect = self.image.get_rect() if rect is None else pygame.Rect(rect)
+		self.cliprect = pygame.Rect((0, 0), self.rect.size) if cliprect is None else pygame.Rect(cliprect)
 		self.set(**initpos)
 		self.pos = float(self.rect.centerx), float(self.rect.centery) # Position needs to be float to evaluate movement more accurately.
+
+	def __str__ (self):
+		return "<FreeSprite at "+str(list(self.rect))+", with clip "+str(list(self.cliprect))+">"
 
 	def set (self, **anchors):
 		# Move the sprite's rect to a coordinate given a point to anchor it to.
@@ -133,13 +137,13 @@ class FreeSprite (pygame.sprite.Sprite):
 		if len(anchor) == 0: anchor = dict(center = self.pos)
 		self.set(**anchor)
 
-	def animate (self, *args, **kwargs):
-		# So no exception is thrown when attempting to animate combinations of FreeSprites and AnimatedSprites.
-		pass
-
 	def draw (self, surf = screen):
 		# Sprite draw method for convenience.
 		surf.blit(self.image, self.rect, self.cliprect)
+
+	def animate (self, *args, **kwargs):
+		# So no exception is thrown when attempting to animate combinations of FreeSprites and AnimatedSprites.
+		pass
 
 class AnimatedSprite (FreeSprite):
 	"""
@@ -154,12 +158,22 @@ class AnimatedSprite (FreeSprite):
 		self.valign = valign # If valign is true, the spritesheet is aligned downwards rather than rightwards.
 		self.reverse = False
 
+	def __str__ (self):
+		return "<Animated Sprite at frame "+str(self.frame)+">"
+
+	def __iter__ (self):
+		self.frame = self.frames - 1 if self.reverse else 0
+		return self
+
+	def __next__ (self):
+		return self.animate()
+
 	def set_clip (self, frame = -1):
 		# Sets the cliprect to the proper frame.
 		if frame >= 0: self.frame = frame
 
-		if self.valign: self.cliprect.top = self.cliprect.h * self.frame
-		else: self.cliprect.left = self.cliprect.w * self.frame
+		if self.valign: self.cliprect.y = self.cliprect.h * self.frame
+		else: self.cliprect.x = self.cliprect.w * self.frame
 
 	def create_framelist (self, framelist):
 		# Creates a generator that animates the sprite through a sequence of frames described by framelist.
@@ -172,30 +186,21 @@ class AnimatedSprite (FreeSprite):
 		# the generator object with a new one if True.
 		yield True
 
-	def __iter__ (self):
-		# Creates a generator that animates the sprite via basic scrolling.
-		if self.reverse:
-			self.frame = self.frames - 1
-		else: self.frame = 0
-		self.set_clip()
-		return self
-	
-	def __next__ (self):
-		# Scrolls through the sprite sheet. Changing the animation row/col will be handled by the sprite itself.
-		# Does not call AnimatedSprite.draw().
-		if self.reverse:
-			if self.frame == 0: raise StopIteration
-			else: self.frame -= 1
-		else:
-			if self.frame == self.frames - 1: raise StopIteration
-			else: self.frame += 1
-		self.set_clip()
-
 	def animate (self, loop = False):
 		# Auto-iterates through a scrolling animation, allowing a simple loop call for a looping animation.
-		try: next(self)
-		except StopIteration:
-			if loop: iter(self)
+		# Does not call AnimatedSprite.draw().
+		if self.reverse:
+			if self.frame == 0: 
+				if loop: self.frame = self.frames - 1
+				else: raise StopIteration
+			else: self.frame -= 1
+		else:
+			if self.frame == self.frames - 1: 
+				if loop: self.frame = 0
+				else: raise StopIteration
+			else: self.frame += 1
+		self.set_clip()
+		return self.frame
 
 class FreeGroup (pygame.sprite.Group):
 	"""
@@ -203,8 +208,11 @@ class FreeGroup (pygame.sprite.Group):
 	It just replaces the draw function such that it uses the sprites' 
 	cliprects instead of drawing whole source images.
 	"""
-	def animate(self):
-		for sprite in self: sprite.animate()
+	def __str__ (self):
+		return "<Free Group containing:"+str(list(sprite for sprite in self))+">"
+
+	def animate(self, loop = False):
+		for sprite in self: sprite.animate(loop)
 
 	def draw (self):
 		for sprite in self: sprite.draw()
@@ -218,25 +226,22 @@ class MenuOption (AnimatedSprite):
 	Improved version of the old MenuSelection class.
 	"""
 	def __init__(self, menu, action, text, pos = (0, 0), clip = (0, 0, 20, 20), src = None, relative = True):
-		if type(clip) is tuple:
-			if len(clip) == 2:
-				clip = pygame.Rect((0, 0), clip)
-			else:
-				clip = pygame.Rect(clip)
+		if len(clip) == 2:
+			clip = (0, 0, clip[0], clip[1])
 		
 		if src is None:
-			src = pygame.Surface((clip.width * 2, clip.height))
+			src = pygame.Surface((clip[2] * 2, clip[3]))
 			src.fill(0x3F3F3F)
-			selbg = pygame.Surface(clip.size)
+			selbg = pygame.Surface(clip[2:4])
 			selbg.fill(0x7F7F7F)
-			src.blit(selbg, (clip.width, 0))
+			src.blit(selbg, (clip[2], 0))
 			del selbg
 
-		super().__init__(src, pygame.Rect(pos, clip.size), clip)
+		super().__init__(src, (pos, clip[2:4]), clip)
 		self.menu = menu
 		self.action = action
 
-		if relative: self.set(topleft = (self.menu.rect.left + self.rect.left, self.menu.rect.top + self.rect.top))
+		if relative: self.set(topleft = (self.menu.rect.x + self.rect.x, self.menu.rect.y + self.rect.y))
 
 		if text is not None:
 			self.text = self.menu.font.render(text, 0, pygame.Color(255, 255, 255))
@@ -244,6 +249,9 @@ class MenuOption (AnimatedSprite):
 		else: self.text = None
 
 		self.is_selected = False
+
+	def __str__ (self):
+		return "<MenuOption "+self.name+" at position: "+str(list(self.rect))+">"
 
 	def update (self, surf = screen):
 		self.set_clip(self.is_selected)
@@ -293,7 +301,7 @@ class Menu (AnimatedSprite):
 
 	def set_range (self):
 		# Initializes the range value of the menu selections. Safe to call more than once on one initialization.
-		# Note that the menu selections are assumed to be rectangular in nature.
+		# Note that the menu selection arrays are assumed to be rectangular in nature.
 		self.range = [len(self.selections), len(self.selections[0])]
 
 	def select (self, addrs = None):

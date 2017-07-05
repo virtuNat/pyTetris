@@ -50,8 +50,13 @@ class SFH:
 		# If this flag is False, then the backup file is assumed to be valid when a reading exception is thrown.
 		self.eflag = False
 
-	def __repr__ (self):
+	def __str__ (self):
+		# Debug info.
 		return "<Score file context manager with id "+str(id(self))+">"
+
+	def __repr__ (self):
+		# eval() usable expression.
+		return "SFH('hiscore.dat')"
 
 	def backup (self):
 		# Update the backup.
