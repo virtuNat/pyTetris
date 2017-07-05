@@ -16,7 +16,7 @@ LEFT and RIGHT arrow keys to shift tetrimino left and right.
 - (Done) Symmetric SRS implementation of wall kicks.
 - (Done) A ghost to predict where the piece will fall.
 - (Done) Both soft and hard drop methods to rush the piece falling.
-- (Minor Issue) Delayed Auto Shifting, and a spawn delay.
+- (Done) Delayed Auto Shifting, and a spawn delay.
 - (Done) Line clear in naive, sticky, and cascade methods.
 - (Minor Issue) Score tracking system and a way to save and view high scores.
 - (Minor Issue) Arcade and Timed modes of play.
@@ -26,8 +26,7 @@ LEFT and RIGHT arrow keys to shift tetrimino left and right.
 - (Unimplemented) Options menu that allows changing of gameplay, aesthetic, and sound volume.
 
 ### Issue Tracker:
-- A bug occurs when the player holds either the shift left or shift right keys to "stick" the active piece against a wall or the grid blocks will cause it to fall slower.
-- The score system has a weird bug that causes it to oversize certain cascade scores in arcade and free mode.
+- Somehow Timed Mode has a smaller score value?
 
 #### Current Version: 1.1.7
 
