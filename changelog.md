@@ -101,12 +101,22 @@ Alpha 1.1.5:
 
 Alpha 1.1.6:
 - Improved handling of scorefile reading/writing, fixed all (explored) bugs that caused crashes as a result of reading missing and invalid score files. This makes use of a context manager object.
-- Fully updated syntax to Python 3.x as of the fixed file handling.
+- Fully updated syntax to Python 3.x as of the fixed file byte handling.
 - Allowed numbers to be entered into score names.
 
 Alpha 1.1.7:
-- Object-Orieted Style code-side optimization.
+- More OOP-style refactoring.
 - Added a ClearSprite that performs the line clearing animation.
 - Fixed the gravity timers being longer by one extra frame.
 - Allowed freeshape to update after gravity ticks, fixing the longstanding DAS-related "sticky" bug.
 
+Alpha 1.1.8:
+- Increased score payout for twists and combos, and fixed an error in the math for Timed Mode's score multiplier.
+- Fixed an error resulting from defining a rich comparison but no hash for Shape objects.
+- Updated context managers to work more generally, and started on user-defined game settings/configuration.
+- Updated repository layout to be easier to navigate.
+- Added a -d option so that debug mode can be manually activated.
+
+Alpha 1.2.0: (to be worked on)
+- Add new textures for score, main, and game menus
+- Add help menu and settings menu

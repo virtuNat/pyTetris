@@ -13,21 +13,21 @@ LEFT and RIGHT arrow keys to shift tetrimino left and right.
 ### Feature Tracker:
 - (Done) Grid collision detection and piece shifting.
 - (Done) SRS implementation of rotation and spawn logic.
-- (Done) Symmetric SRS implementation of wall kicks.
+- (Done) Arika implementation of wall kicks.
 - (Done) A ghost to predict where the piece will fall.
 - (Done) Both soft and hard drop methods to rush the piece falling.
-- (Done) Delayed Auto Shifting, and a spawn delay.
+- (Done) Delayed Auto Shifting, and ARE, allowing DAS and Hold to be available during this time.
 - (Done) Line clear in naive, sticky, and cascade methods.
-- (Minor Issue) Score tracking system and a way to save and view high scores.
-- (Minor Issue) Arcade and Timed modes of play.
+- (Done) Score tracking system and a way to save and view high scores.
+- (Needs Testing) Arcade and Timed modes of play.
 - (Incomplete) Keyboard controlled menus, including a pause menu.
+- (Unimplemented) Options menu that allows changing of gameplay, aesthetic, and sound volume.
 - (Incomplete) Sound effects and background music.
 - (Incomplete) Art for all game textures, menus, and the logo.
-- (Unimplemented) Options menu that allows changing of gameplay, aesthetic, and sound volume.
 
 ### Issue Tracker:
-- Somehow Timed Mode has a smaller score value?
+- Arcade Mode has not been sufficiently tested.
 
-#### Current Version: 1.1.7
+#### Current Version: 1.1.8
 
 Let me know if there are any other problems!
