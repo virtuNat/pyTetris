@@ -1,4 +1,4 @@
-# File handling classes.
+"Contains class definitions for custom context managers used in the game."
 try:
 	import os
 	import struct
@@ -6,28 +6,17 @@ except ImportError:
 	print("A module must've shat itself:")
 	raise
 
-class SFH:
-	"""
-	SFH, or ScoreFileHandler is a class that is built to, as the name suggests, 
-	handle score file data.
+class ContextMan:
+	"Generic file manager."
+	__slots__ = ('sfile', 'bckup', 'eflag')
 
-	It's a context manager inteded to be used with the built-in with statement 
-	to handle saving and pulling of score data safely.
-
-	To use this, do:
-	with SFH(scorefilename) as sfh: 
-		# Do scorefile operations...
-
-	Do note that sfh is a reference to the context manager object itself, not the 
-	file object. The file object is referenced under the sfile attribute.
-	"""
-
-	def __init__ (self, name = 'hiscore.dat'):
+	def __init__ (self, name):
 		name = os.path.join('data', name)
+		bname = os.path.join('back', name[:-3] + 'bak')
 		# The backup file is there to ensure that the data is preserved in some cases of fucketry.
 		# Note: Does not work if the backup file itself is fucked with.
 		try:
-			self.bckup = open(name[:-3] + 'bak', 'rb+')
+			self.bckup = open(bname, 'rb+')
 			# Since the backup exists, check if the data exists too.
 			try:
 				self.sfile = open(name, 'rb+')
@@ -36,7 +25,7 @@ class SFH:
 				self.sfile = open(name, 'wb+')
 				self.load()
 		except IOError:
-			self.bckup = open(name[:-3] + 'bak', 'wb+')
+			self.bckup = open(bname, 'wb+')
 			# If the backup is missing, check if the original score data exists.
 			try:
 				self.sfile = open(name, 'rb+')
@@ -52,11 +41,20 @@ class SFH:
 
 	def __str__ (self):
 		# Debug info.
-		return "<Score file context manager with id "+str(id(self))+">"
+		return "<Context manager with id "+str(id(self))+">"
 
 	def __repr__ (self):
 		# eval() usable expression.
-		return "SFH('hiscore.dat')"
+		return "ContextMan('file.dat')"
+
+	def __enter__ (self):
+		# The value that will be returned to the as statement.
+		return self
+
+	def __exit__ (self, *exc_info):
+		# Cleanup both files.
+		self.bckup.close()
+		self.sfile.close()
 
 	def backup (self):
 		# Update the backup.
@@ -73,14 +71,45 @@ class SFH:
 		self.sfile.write(self.bckup.read())
 
 	def reset (self):
+		pass
+
+class SFH (ContextMan):
+	"""
+	SFH, or ScoreFileHandler is a class that is built to, as the name suggests,
+	handle score file data.
+
+	It's a context manager inteded to be used with the built-in with statement
+	to handle saving and pulling of score data safely.
+
+	To use this, do:
+	with SFH(scorefilename) as sfh:
+		# Do scorefile operations...
+
+	Do note that sfh is a reference to the context manager object itself, not the
+	file object. The file object is referenced under the sfile attribute.
+	"""
+	__slots__ = ('sfile', 'bckup', 'eflag')
+
+	def __init__ (self):
+		# Scorefile of the filename hiscore.dat
+		super().__init__('hiscore.dat')
+
+	def __str__ (self):
+		# Debug info.
+		return "<Score file context manager with id "+str(id(self))+">"
+
+	def __repr__ (self):
+		# eval() usable expression.
+		return "SFH()"
+
+	def reset (self):
 		# Resets the given scorefile to the default data.
 		self.sfile.seek(0)
 		self.sfile.truncate()
-		for i in range(3):
-			for j in range(10):
-				# Alexey Leonidovich Pajitnov is the developer of the original Tetris.
-				score = [c.encode() for c in 'Pajitnov'] + [0, 0, 0]
-				self.sfile.write(struct.pack('>ccccccccQLL', *score))
+		for _ in range(30):
+			# Alexey Leonidovich Pajitnov is the developer of the original Tetris.
+			score = [c.encode() for c in 'Pajitnov'] + [0, 0, 0]
+			self.sfile.write(struct.pack('>ccccccccQLL', *score))
 		self.backup()
 
 	def validate (self):
@@ -94,7 +123,7 @@ class SFH:
 			self.reset()
 			self.eflag = False
 
-	def decode (self, splitname = False):
+	def decode (self, splitname=False):
 		# Read the scorefile, and return 3 lists of top ten score lists.
 		self.sfile.seek(0, 2)
 		if self.sfile.tell() != 720:
@@ -107,7 +136,7 @@ class SFH:
 		try:
 			# Each score is a set of 24 bytes, the first eight of which stand for the name entered.
 			scorelists = [struct.unpack('>ccccccccQLL', self.sfile.read(24)) for i in range(30)]
-		except struct.error as e:
+		except Exception as e:
 			# If an exception is thrown during reading, first attempt to load from the backup.
 			# If that still fails, reset the scores (erasing score data, whoops).
 			self.validate()
@@ -126,7 +155,6 @@ class SFH:
 		# Grab the score data.
 		slists = self.decode(True)
 		# Add the new entry.
-		for i in range(8): entry[i] = bytes(entry[i])
 		slists[g].append(entry)
 		# Sort the entries.
 		# Lines cleared third.
@@ -134,22 +162,33 @@ class SFH:
 		# Time second.
 		slists[g].sort(key = lambda s: s[10])
 		# Score first.
-		slists[g].sort(key = lambda s: s[8], reverse = True)
+		slists[g].sort(key = lambda s: s[8], reverse=True)
 		# Remove the old last entry and re-arrange the score lists into a single list.
 		slists[g].pop()
 		slists = slists[0] + slists[1] + slists[2]
 		# Apply change to scorefile.
 		self.sfile.seek(0)
 		self.sfile.truncate()
-		for score in slists: self.sfile.write(struct.pack('>ccccccccQLL', *score))
+		for score in slists:
+			self.sfile.write(struct.pack('>ccccccccQLL', *score))
 		# Backup the entered score.
 		self.backup()
 
-	def __enter__ (self):
-		# The value that will be returned to the as statement.
-		return self
+class Config (ContextMan):
+	""
+	__slots__ = ('sfile', 'bckup', 'eflag')
+	
+	def __init__ (self):
+		# Config file is of the name config.dat.
+		super().__init__('config.dat')
 
-	def __exit__ (self, etype, evalue, tback):
-		# Cleanup both files.
-		self.bckup.close()
-		self.sfile.close()
+	def __str__ (self):
+		# Debug info.
+		return "<Config file context manager with id "+str(id(self))+">"
+
+	def __repr__ (self):
+		# eval() usable expression.
+		return "Config()"
+
+	def reset (self):
+		pass
