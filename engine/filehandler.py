@@ -11,8 +11,8 @@ class ContextMan:
 	__slots__ = ('sfile', 'bckup', 'eflag')
 
 	def __init__ (self, name):
-		name = os.path.join('data', name)
-		bname = os.path.join('back', name[:-3] + 'bak')
+		fname = os.path.join('data', name)
+		bname = os.path.join('data', os.path.join('back', name[:-3] + 'bak'))
 		# The backup file is there to ensure that the data is preserved in some cases of fucketry.
 		# Note: Does not work if the backup file itself is fucked with.
 		try:
@@ -33,9 +33,8 @@ class ContextMan:
 			except IOError:
 				self.sfile = open(name, 'wb+')
 				self.reset()
-		finally:
-			self.bckup.seek(0)
-			self.sfile.seek(0)
+		self.bckup.seek(0)
+		self.sfile.seek(0)
 		# If this flag is False, then the backup file is assumed to be valid when a reading exception is thrown.
 		self.eflag = False
 

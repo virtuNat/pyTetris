@@ -5,11 +5,11 @@ try:
 	import sys
 	import random
 	import pygame as pg
-	import environment as env
-	import filehandler as fh
-	import menu
-	from shapes import (Shape, Grid)
-	from userstate import User
+	import engine.environment as env
+	import engine.filehandler as fh
+	import engine.menu as menu
+	from engine.shapes import (Shape, Grid)
+	from engine.userstate import User
 except ImportError:
 	print("A tetrimino fell through the fucking floor:")
 	raise
@@ -248,8 +248,6 @@ class Tetris:
 			if self.check_collision(self.ghostshape):
 				self.ghostshape.translate(( 0,-1))
 				break
-		if self.user.showghost:
-			self.ghostshape.draw()
 
 	def eval_tspin (self):
 		# If a twist hasn't occured after a successful rotation,
@@ -525,6 +523,9 @@ class Tetris:
 		self.render_text('Held:', 0xFFFFFF, topleft=(162, self.grid.rect.y + 60))
 		if self.storedshape is not None:
 			self.storedshape.draw([158, self.grid.rect.y + 126], True)
+		# Display ghost piece.
+		if self.user.showghost:
+			self.ghostshape.draw()
 
 		# Show current fps.
 		self.render_text(str(int(round(env.clock.get_fps(), 0))), 0xFFFFFF, bottomright=(env.screct.w - 5, env.screct.h - 5))
@@ -543,12 +544,6 @@ class Tetris:
 		if self.user.resetgame:
 			self.set_data()
 			self.user.resetgame = False
-		# Display the background.
-		env.screen.blit(self.bg, (0, 0))
-		# Display and manage the grid.
-		self.grid.update()
-		# Display everything else.
-		self.display()
 		# Evaluate inputs and kick if necessary.
 		self.eval_input()
 		# Evaluate translation.
@@ -610,6 +605,12 @@ class Tetris:
 		# Evaluate special states.
 		self.eval_loss()
 		self.eval_pause()
+		# Display the background.
+		env.screen.blit(self.bg, (0, 0))
+		# Display and manage the grid.
+		self.grid.update()
+		# Display everything else.
+		self.display()
 		# Refresh screen. There is not enough fast rendering to justify using update()
 		pg.display.flip()
 

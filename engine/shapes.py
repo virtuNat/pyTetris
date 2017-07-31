@@ -2,7 +2,7 @@
 try:
 	import random
 	import pygame as pg
-	import environment as env
+	import engine.environment as env
 except ImportError:
 	print("Are the blocks fucking made of soap?:")
 	raise

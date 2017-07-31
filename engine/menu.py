@@ -1,8 +1,8 @@
 "Contains subclass definitions for all menus used in the game."
 try:
 	import pygame as pg
-	import environment as env
-	import filehandler as fh
+	import engine.environment as env
+	import engine.filehandler as fh
 except ImportError:
 	print("Something fucking jammed in here:")
 	raise
