@@ -18,7 +18,7 @@ class User:
 	combo_factor = 1.6 # The multiplier for subsequent drop clears.
 	clear_factor = 2. # The multiplier if the entire matrix was cleared by this piece.
 
-	def __init__ (self, argv):
+	def __init__ (self):
 		# Global state variables.
 		self.state = 'main_menu'
 		self.gametype = 'free'
@@ -34,18 +34,30 @@ class User:
 		self.twist_flag = False # True if the tetrimino twisted into place.
 		self.tspin_flag = False # True if a T-spin occured.
 		self.resetgame = False # True if the game needs to be reset.
+		self.eval_argv(None)
+		self.reset()
+
+	def __str__ (self):
+		# Debug info dump.
+		return (
+			"User instance running <"+self.state+">.\n"
+			"User Settings:\n"
+			"Clear Type: "+(['Naive', 'Sticky Cascade', 'Linked Cascade'][self.cleartype])+"\n"
+			"Wall Kicks: "+('Enabled' if self.enablekicks else 'Disabled')+"; "
+			"Ghost Piece: "+('Enabled' if self.showghost else 'Disabled')+"; "
+			"Linked Tile Textures: "+('Enabled' if self.linktiles else 'Disabled')+"\n\n"
+			"Scoring Values:\n"
+			"Score: "+str(self.score)+"; Last Clear: "+str(self.last_score)+" Clearing Chain: "+str(self.line_list[:-1])+"\n"
+			"Level: "+str(self.level)+"; Timer: "+"{}:{:02d}:{:02d}".format(self.timer // 60000, self.timer//1000 % 60, self.timer%1000 // 10)+"\n"
+			"Combo Number: "+str(self.combo_ctr)+"; Combo Multiplier: "+str(self.current_combo)+"\n"
+		)
+
+	def eval_argv (self, argv):
 		# argv is an argparse.Namespace object that defines special behavior for testing purposes.
 		if argv is not None:
 			self.debug = argv.debug # Debug mode: cheats on!
 		else:
 			self.debug = False
-		self.reset()
-
-	def __str__ (self):
-		return "<User instance running the '"+self.state+"' state.>"
-
-	def __repr__ (self):
-		return self.__str__()
 
 	def reset (self):
 		# Reset data when starting a new game.
@@ -59,28 +71,24 @@ class User:
 		self.combo_ctr = 0 # Current combo number.
 		self.current_combo = 1. # The current combo multiplier.
 
-	def add_score (self, value):
-		# Shortcut adder alias.
-		self.score += int(value)
-
 	def eval_drop_score (self, posdif=0):
 		# Add score value when piece is dropped.
 		if self.state != 'loss_menu':
 			if self.hard_flag:
-				self.add_score(self.drop_score + (self.dist_factor*posdif))
+				self.score += int(round(self.drop_score + (self.dist_factor*posdif), 0))
 				self.hard_flag = False
 			else:
-				self.add_score(self.drop_score + (self.dist_factor*posdif/3.))
+				self.score += int(round(self.drop_score + (self.dist_factor*posdif/3.), 0))
 
 	def predict_score (self, clearflag):
 		# Evaluate clear line combo score value, but don't add it yet.
-		if len(self.line_list) > 1 and self.line_list[-1] == 0:
+		if self.line_list[-1] == 0:
 			self.line_list.pop()
 		temp_score = 0
 		# In arcade mode, level boosts score earned by line clears.
 		linescore = self.line_score
 		if self.gametype == 'arcade':
-			linescore += self.level * 2.5
+			linescore += self.level*2.5
 		# Calculate base score from number of cascades and number of lines cleared per cascade.
 		for line in self.line_list:
 			temp_score += linescore * line * (1 + (self.line_factor * (line-1)))
@@ -105,23 +113,34 @@ class User:
 			# Add the clear line score.
 			self.lines_cleared += sum(self.line_list)
 			self.last_score = self.predict_score(clearflag)
-			self.add_score(self.last_score)
+			self.score += self.last_score
 			# Increment combo counter.
 			self.combo_ctr += 1
 			self.current_combo = self.combo_factor ** self.combo_ctr
 		else:
 			# If no lines were cleared, break combo.
-			self.current_combo = 1.0
 			self.combo_ctr = 0
+			self.current_combo = 1.0
 
 	def eval_level (self):
 		# Evaluate current arcade level.
 		if self.lines_cleared <= 640: # Up to level 64, increment every 10 lines.
-			self.level = self.lines_cleared // 10
+			self.level = 1 + self.lines_cleared // 10
 		elif self.lines_cleared <= 1920: # Up to level 128, increment every 20 lines.
-			self.level = 63 + ((self.lines_cleared - 640) // 20)
+			self.level = 64 + ((self.lines_cleared - 640) // 20)
 		elif self.lines_cleared <= 3840: # Up to level 192, increment every 30 lines.
-			self.level = 127 + ((self.lines_cleared - 1920) // 30)
+			self.level = 128 + ((self.lines_cleared - 1920) // 30)
 		elif self.lines_cleared <= 6400: # Up to level 256, increment every 40 lines.
-			self.level = 191 + ((self.lines_cleared - 3840) // 40)
+			self.level = 192 + ((self.lines_cleared - 3840) // 40)
 		else: self.level = 256
+
+	def eval_timer (self, time):
+		# Evaluate timer.
+		if self.gametype == 'timed':
+			if self.timer > 0:
+				self.timer -= time
+			else:
+				self.timer = 0
+				self.state = 'loss_menu'
+		else:
+			self.timer += time

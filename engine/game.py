@@ -1,21 +1,18 @@
-#!/usr/bin/env python
 "Runs the game logic for pyTetris."
-
 try:
 	import sys
 	import random
+	import traceback
 	import pygame as pg
 	import engine.environment as env
 	import engine.filehandler as fh
 	import engine.menu as menu
 	from engine.shapes import (Shape, Grid)
-	from engine.userstate import User
 except ImportError:
 	print("A tetrimino fell through the fucking floor:")
 	raise
 
-game_bg = pg.Surface(env.screct.size)
-game_bg.fill(0x000000)
+pg.display.set_caption('pyTetris')
 
 class Tetris:
 	"""
@@ -27,6 +24,8 @@ class Tetris:
 	Game ends when the stack of blocks reaches the top!
 	Grab the highest score!
 	"""
+	bg = pg.Surface(env.screct.size)
+	bg.fill(0x000000)
 
 	def __init__ (self, user, pause_menu, save_menu, loss_menu):
 		self.user = user
@@ -34,7 +33,6 @@ class Tetris:
 		self.save_menu = save_menu
 		self.loss_menu = loss_menu
 
-		self.bg = game_bg
 		self.font = pg.font.SysFont(None, 25)
 		self.theme = env.load_music('tetris.ogg')
 
@@ -42,10 +40,15 @@ class Tetris:
 		self.set_data()
 
 	def __str__ (self):
-		return "<Tetris game engine object with id "+str(id(self))+">"
-
-	def __repr__ (self):
-		return self.__str__()
+		# Debug info dump.
+		return (
+			"Game State:\n"
+			"Free Shape:\n"+str(self.freeshape)+"\n"
+			"Test Shape:\n"+str(self.newshape)+"\n"
+			"Ghost Shape:\n"+str(self.ghostshape)+"\n"
+			"Held Shape:\n"+str(self.storedshape)+"\n"
+			"Grid State:\n"+str(self.grid)+"\n"
+		)
 
 	def set_data (self):
 		# Initializes the game data.
@@ -78,7 +81,7 @@ class Tetris:
 			self.shift_delay = 8
 			self.shift_fdelay = 1
 
-			self.user.timer = 5 * 60 * 1000 # Remaining time in timed mode.
+			self.user.timer = 5 * 60 * 1000 # Remaining time in timed mode in milliseconds.
 		else: # Free mode stays at a comfortable pace.
 			self.fall_delay = 30 # Number of frames between gravity ticks.
 			self.soft_delay = 3 # ^ during soft drop.
@@ -97,7 +100,7 @@ class Tetris:
 
 	def gen_shapelist (self):
 		# Generate a 'bag' of one of each tetrimino shape in random order.
-		s_list = [Shape(i, linkrule=self.user.linktiles) for i in range(7)]
+		s_list = [Shape(i) for i in range(7)]
 		random.shuffle(s_list)
 		return s_list
 
@@ -108,25 +111,25 @@ class Tetris:
 		if isinstance(shape, Shape):
 			self.freeshape = shape
 		else:
-			self.freeshape = Shape(shape, linkrule=self.user.linktiles)
-		self.newshape = self.freeshape.copy(self.user.linktiles)
-		self.ghostshape = self.freeshape.copy(self.user.linktiles, True)
+			self.freeshape = Shape(shape)
+		self.newshape = self.freeshape.copy()
+		self.ghostshape = self.freeshape.copy(True)
 		self.eval_ghost()
 		# Test for obstructions. If they exist, the player lost.
 		self.eval_block()
 
 	def next_shape (self):
 		# Increments the shape list.
-		s = self.nextshapes.pop(0)
-		if self.entry_flag: self.set_shape(s)
-		if len(self.nextshapes) < 7: self.nextshapes.extend(self.gen_shapelist())
+		if self.entry_flag:
+			self.set_shape(self.nextshapes.pop(0))
+			if len(self.nextshapes) < 7:
+				self.nextshapes.extend(self.gen_shapelist())
 
 	def hold_shape (self):
 		# Holds a tetrimino in storage until retrieved.
 		if self.storedshape.form > 6:
 			self.storedshape = Shape(
-				self.newshape.form if self.entry_flag else self.nextshapes[0].form,
-				linkrule=self.user.linktiles)
+				self.newshape.form if self.entry_flag else self.nextshapes[0].form, 0)
 			self.next_shape()
 		else:
 			# If storage already has a tetrimino, swap with current active one.
@@ -134,8 +137,8 @@ class Tetris:
 				self.hold_lock = True
 				if self.entry_flag:
 					# You can only swap once per piece and can't swap if it's the same shape as the active piece.
-					self.freeshape, self.storedshape = self.storedshape, self.freeshape
-					self.newshape = self.freeshape.copy(self.user.linktiles)
+					self.freeshape, self.storedshape = Shape(self.storedshape.form), Shape(self.freeshape.form)
+					self.newshape = self.freeshape.copy()
 				else:
 					# Allow pieces to be swapped during spawn delay.
 					self.nextshapes[0], self.storedshape = self.storedshape, self.nextshapes[0]
@@ -143,7 +146,14 @@ class Tetris:
 	def check_collision (self, shape):
 		# Check if the shape to be evaluated is intersecting with any other blocks on the grid.
 		for pos in shape.poslist:
-			if self.grid[pos[1]][pos[0]] is not None: 
+			if pos[1] < 0:
+				# Ideally, it's impossible to get above the grid, but just in case...
+				continue
+			elif pos[0] < 0 or pos[0] >= len(self.grid[0]) or pos[1] >= len(self.grid):
+				# If a block is outside the grid's bounding box, then a collision has occured.
+				return True
+			elif self.grid[pos[1]][pos[0]] is not None: 
+				# If a block would move to an already occupied cell on the grid, then a collision has occured.
 				return True
 		else: return False
 
@@ -177,10 +187,10 @@ class Tetris:
 
 			elif self.entry_flag:
 				if event.key == pg.K_z or event.key == pg.K_LCTRL: # Rotate CCW
-					self.newshape.rotate(False, self.user.linktiles)
+					self.newshape.rotate(False)
 					self.wall_kick()
 				elif event.key == pg.K_x or event.key == pg.K_UP: # Rotate CW
-					self.newshape.rotate(True, self.user.linktiles)
+					self.newshape.rotate(True)
 					self.wall_kick()
 
 				elif event.key == pg.K_SPACE: # Hard drop
@@ -191,7 +201,10 @@ class Tetris:
 				# Cheats for testing purposes.
 				if self.user.gametype == 'arcade' and event.key == pg.K_8:
 					self.user.lines_cleared += 50
-				if event.key == pg.K_9: # Add garbage line
+				if event.key == pg.K_8:
+					print("pyTetris has been terminated manually. Please refer to debug log.")
+					env.quit(2)
+				elif event.key == pg.K_9: # Add garbage line
 					self.grid.add_garbage()
 					# Prevent intersections.
 					if self.check_collision(self.freeshape):
@@ -241,8 +254,8 @@ class Tetris:
 			self.freeshape.pos = self.newshape.pos[:]
 
 	def eval_ghost (self):
-		# Evaluate and display the position of the ghost tetrimino.
-		self.ghostshape = self.freeshape.copy(self.user.linktiles, True)
+		# Evaluate the position of the ghost guide.
+		self.ghostshape = self.freeshape.copy(True)
 		while True:
 			self.ghostshape.translate(( 0, 1))
 			if self.check_collision(self.ghostshape):
@@ -290,7 +303,7 @@ class Tetris:
 			# If none of the kick positions are valid, a twist didn't occur.
 			self.user.twist_flag = False
 			# Undo the rotation.
-			self.newshape = self.freeshape.copy(self.user.linktiles)
+			self.newshape = self.freeshape.copy()
 
 	def wall_kick (self):
 		# Arika Implementation of wall kicks for I-symmetricity about the y-axis.
@@ -353,7 +366,7 @@ class Tetris:
 					# If no wall kicks happened, check if this was a T-spin instead.
 					self.eval_tspin()
 			# Update the active piece.
-			self.freeshape = self.newshape.copy(self.user.linktiles)
+			self.freeshape = self.newshape.copy()
 
 	def eval_gravity (self):
 		# Test if the next gravity tick will cause a collision.
@@ -512,6 +525,9 @@ class Tetris:
 				'{}:{:02d}:{:02d}'.format(self.user.timer // 60000, self.user.timer//1000 % 60, self.user.timer%1000 // 10),
 				0xFFFFFF, topright=(ralign, talign + spacing*7))
 
+		# Display ghost piece.
+		if self.user.showghost:
+			self.ghostshape.draw()
 		# Display active piece.
 		if self.entry_flag and not self.clearing:
 			self.freeshape.draw()
@@ -523,9 +539,6 @@ class Tetris:
 		self.render_text('Held:', 0xFFFFFF, topleft=(162, self.grid.rect.y + 60))
 		if self.storedshape is not None:
 			self.storedshape.draw([158, self.grid.rect.y + 126], True)
-		# Display ghost piece.
-		if self.user.showghost:
-			self.ghostshape.draw()
 
 		# Show current fps.
 		self.render_text(str(int(round(env.clock.get_fps(), 0))), 0xFFFFFF, bottomright=(env.screct.w - 5, env.screct.h - 5))
@@ -580,28 +593,12 @@ class Tetris:
 			else:
 				self.entry_flag = True
 				self.next_shape()
-		else:
-			# Perform clearing animation during line clears.
-			# Both the falling and the animation account for line clear delay.
-			if len(self.grid.csprts):
-				self.grid.animate_clears()
-			else:
-				env.clock.tick(45)
-				self.clearing = next(self.line_clearer)
+			
 		# Evaluate arcade mode difficulty.
 		if self.user.gametype == 'arcade':
 			self.ramp_arcade(self.user.level)
 		# Evaluate timer at the end of the frame.
-		if self.user.gametype == 'timed':
-			# Evaluate the timer in timed mode.
-			if self.user.timer > 0:
-				self.user.timer -= env.clock.get_time()
-			else:
-				self.user.timer = 0
-				self.user.state = 'loss_menu'
-		else:
-			# Increment timer for non-timed modes so it could be appended to the high score.
-			self.user.timer += env.clock.get_time()
+		self.user.eval_timer(env.clock.get_time())
 		# Evaluate special states.
 		self.eval_loss()
 		self.eval_pause()
@@ -611,15 +608,25 @@ class Tetris:
 		self.grid.update()
 		# Display everything else.
 		self.display()
+		# Perform clearing animation during line clears.
+		if self.clearing:
+			# Both the falling and the animation account for line clear delay.
+			if len(self.grid.csprts):
+				self.grid.animate_clears()
+			else:
+				self.clearing = next(self.line_clearer)
 		# Refresh screen. There is not enough fast rendering to justify using update()
 		pg.display.flip()
 
 def init (argv):
+	# Evaluate command line parameters.
+	env.user.eval_argv(argv)
+	# Local class definition of the object that will run the game.
 	class PyTetris:
 		"Runs an instance of pyTetris."
 		__slots__ = ()
 		# Initialize game objects.
-		user = User(argv)
+		user = env.user
 		play_menu = menu.PlayMenu(user)
 		score_menu = menu.HiScoreMenu(user)
 		pause_menu = menu.PauseMenu(user)
@@ -628,11 +635,14 @@ def init (argv):
 		main_menu = menu.MainMenu(user, score_menu)
 		game = Tetris(user, pause_menu, save_menu, loss_menu)
 
-		def __repr__(self):
+		def __str__(self):
 			# Supposed to dump the game state at the time of calling, but not yet fully implemented.
 			return (
-				"pyTetris project by virtuNat. Debug mode: "+('Active' if self.user.debug else 'Inactive')+".\n"
-				"Current game state: <"+self.user.state+">\n"
+				"The game has crashed due to the "+sys.exc_info()[0].__name__+" exception being thrown.\n"
+				"Please consult the dump for details, and send it to the developer so that it may be fixed.\n"
+				"Debug mode: "+('Active' if self.user.debug else 'Inactive')+".\n\n"
+				"User State:\n"+str(self.user)+"\n"
+				""+str(eval('self.'+self.user.state))
 			)
 
 		def run (self):
@@ -640,17 +650,19 @@ def init (argv):
 			# User state system allows menu changing to be as simple as running an eval()
 			# as long as the state name matches a menu variable name.
 			while self.user.state != 'quit':
-				env.clock.tick(60)
+				env.clock.tick(50)
 				try:
-					eval('self.' + self.user.state).run()
+					# Catch exceptions that occur during gameplay to make debugging easier.
+					eval('self.'+self.user.state+'.run()')
 				except:
-					# Dump game state.
-					print(repr(self))
+					# Dump game state to a log, ideally using verbose __str__() methods.
+					if self.user.debug:
+						# Echo to command line if debug mode is on.
+						print(self)
+					with open('crashdump.log', 'w') as dump:
+						dump.write(str(self))
+						traceback.print_exception(*sys.exc_info(), file=dump)
 					raise
 			# Clean up when the program ends.
 			env.quit()
 	return PyTetris()
-
-if __name__ == '__main__':
-	# Allow the game to be run from this script file.
-	init(None).run()

@@ -1,14 +1,12 @@
-# My personal environment upon which I base my pygame projects. Small changes will exist here from game to game, but it will all mostly look like this.
-# The way I code things is for optimized reusability. So while it may not be the shortest or most code-efficient way of creating a game,
-# I try to make it such that I could easily plug and edit blocks of code into similar applications.
-# Also it's good for convenience's sake that I don't have to think so hard about what the hell I did when I wrote the older stuff.
-# [ ] square bracket copy reference, { } curly braces reference
+"Boilerplate that exists so I don't have to think about it too hard and just import this when doing other projects."
 try:
 	import os
 	import sys
 	import math
 	import random
+	import datetime
 	import pygame as pg
+	from engine.userstate import User
 except ImportError:
 	print("A module must've shat itself:")
 	raise
@@ -17,21 +15,37 @@ pg.init()
 pg.mixer.init(buffer=1024)
 screen = pg.display.set_mode((800, 600), pg.HWSURFACE | pg.DOUBLEBUF)
 screct = screen.get_rect()
-pg.display.set_caption('pyTetris')
 clock = pg.time.Clock()
+user = User()
 
-def sin (angle):
-	# Degree sine alias.
-	return math.sin(math.radians(angle))
+def cond_all (iterator, condition=lambda i:i):
+	"Conditional all function. Return False if at least one element fails the conditional expression."
+	for element in iterator:
+		if not condition(element):
+			return False
+	return True
+
+def cond_any (iterator, condition=lambda i:i):
+	"Conditional any function. Return True if at least one element fulfills the conditional expression."
+	for element in iterator:
+		if condition(element):
+			return True
+	return False
+# Note: if condition is not specified for cond_all() and cond_any(), then it is equivalent to
+# the built-in all() and any() functions, and in those cases, the built-ins should be used.
 
 def cos (angle):
 	# Degree cosine alias.
 	return math.cos(math.radians(angle))
 
+def sin (angle):
+	# Degree sine alias.
+	return math.sin(math.radians(angle))
+
 def hyp_area (p1, p2):
 	# The area of a square whose side is the length of the line segment bounded by p1 and p2.
 	# Used for comparing distances without dealing with a square root operation.
-	return sum([(p2[i]-p1[i]) ** 2 for i in range(2)]) # c^2 = a^2 + b^2
+	return (p2[0]-p1[0]) ** 2 + (p2[1]-p1[1]) ** 2 # c^2 = a^2 + b^2
 
 def get_ang (p1, p2):
 	# Angle from p1 to p2.
@@ -64,14 +78,29 @@ def load_image (name, alpha=None, colorkey=None):
 		image = image.convert_alpha()
 	return image
 
-def render_text (obj, text, color, surf=screen, **anchors):
+def save_image (surf, name, path='.'):
+	# Alias to saving function.
+	pg.image.save(surf, os.path.join(path, name))
+
+def screenshot ():
+	# Take a screenshot with the current date and time as the filename.
+	save_image(screen, str(datetime.datetime.now())+'.png', 'screenshots')
+
+def convert_hexcolor (hexcolor):
+	# Avoids an annoying bug where the 24-bit hexcolor is mapped to GGBBAA instead of RRGGBB.
+	if color < 2 ** 24:
+		color = color * 256 + 255 # Assume opaque
+	return pg.Color(color)
+
+def render_text (obj=None, text='', color=0, surf=screen, **anchors):
 	# Takes an object with a font attribute, and creates a text surface that it blits to a given surface.
 	# Can be added to any class as a method, provided that class instances have a font attribute.
-	if obj is None: obj = type('_', (), {'font': pg.font.SysFont(None, 25)})()
-	if color < 2 ** 24:
-		# The output surface has 255 alpha by default, but it's possible to add an alpha channel to the color number.
-		color = color*256 + 255
-	tsurf = obj.font.render(text, 0, pg.Color(color))
+	if type(color) is int:
+		color = convert_hexcolor(color)
+	try:
+		tsurf = obj.font.render(text, 0, color)
+	except AttributeError:
+		tsurf = pg.font.SysFont(None, 25).render(text, 0, color)
 	surf.blit(tsurf, tsurf.get_rect(**anchors))
 
 def load_music(name):
@@ -83,7 +112,7 @@ def restart_music():
 	pg.mixer.music.rewind()
 	pg.mixer.music.play()
 
-def quit (exit=1):
+def quit (exit=0):
 	# Alias to cleanup functions.
 	pg.quit()
 	sys.exit(exit)
@@ -92,7 +121,7 @@ class FreeSprite (pg.sprite.Sprite):
 	"""
 	FreeSprite is the replacement for PositionedSurface;
 	it retains all of the functionality while including the convenience of being a
-	pg.sprite.Sprite child class.
+	pygame.sprite.Sprite child class.
 	"""
 	def __init__ (self, image, rect=None, cliprect=None, **initpos):
 		super().__init__()
@@ -102,7 +131,7 @@ class FreeSprite (pg.sprite.Sprite):
 		self.set(**initpos)
 		self.pos = float(self.rect.centerx), float(self.rect.centery) # Position needs to be float to evaluate movement more accurately.
 
-	def __str__ (self):
+	def __repr__ (self):
 		return "<FreeSprite at "+str(list(self.rect))+", with clip "+str(list(self.cliprect))+">"
 
 	def set (self, **anchors):
@@ -160,7 +189,7 @@ class AnimatedSprite (FreeSprite):
 		self.valign = valign # If valign is true, the spritesheet is aligned downwards rather than rightwards.
 		self.reverse = False
 
-	def __str__ (self):
+	def __repr__ (self):
 		return "<Animated Sprite at frame "+str(self.frame)+">"
 
 	def __iter__ (self):
@@ -210,7 +239,7 @@ class FreeGroup (pg.sprite.Group):
 	It just replaces the draw function such that it uses the sprites'
 	cliprects instead of drawing whole source images.
 	"""
-	def __str__ (self):
+	def __repr__ (self):
 		return "<Free Group containing:"+str(list(sprite for sprite in self))+">"
 
 	def animate(self, loop = False):
@@ -252,13 +281,10 @@ class MenuOption (AnimatedSprite):
 			self.text = None
 		self.is_selected = False
 
-	def __str__ (self):
+	def __repr__ (self):
 		return "<MenuOption "+self.action+" for "+str(self.menu.__class__.__name__)+".>"
 
-	def __repr__ (self):
-		return self.__str__()
-
-	def update (self, surf = screen):
+	def update (self, surf=screen):
 		self.set_clip(self.is_selected)
 		self.draw(surf)
 		if self.text is not None: surf.blit(self.text, self.text_rect)
@@ -268,9 +294,8 @@ class Menu (AnimatedSprite):
 	The Menu class is the superclass to all menu objects, and will handle basic menu operations,
 	such as moving along selections, positioning, and committing.
 	"""
-
-	# def __new__ (cls): return type(cls, bases, attrs)()
-	# While it may be tempting to use Menu as a metaclass, there is no need for such specific behavioral changes during construction.
+	menu_bg = env.AnimatedSprite(pg.Surface(env.screct.size))
+	menu_bg.image.fill(0x008080)
 
 	def __init__ (self, user, bg=None, rect=None, **pos):
 		if bg is None:
@@ -287,37 +312,36 @@ class Menu (AnimatedSprite):
 		# All menus will have their own selections set, effectively a 2d array, with the range length set at every instance.
 		self.selections = [[MenuOption(self, 'Null', ' ')]]
 		# Selection movement.
-		self.up = False
-		self.down = False
-		self.left = False
-		self.right = False
-		self.moved = False
 		self.basetime = 25
 		self.shortime = 6
-		self.movetime = self.basetime
+		self.setdir()
 
 	def __getattr__ (self, name):
-		if name == 'selected':
-			# Alias to currently selected item.
-			return self.select()
-		elif name == 'range':
+		if name == 'range':
 			# Dimensions of the rectangular selection array.
 			return [len(self.selections), len(self.selections[0])]
 
-	def select (self, addrs=None):
-		# Easy way of getting the current selection.
-		if addrs is None: addrs = self.selection
-		return self.selections[addrs[0]][addrs[1]]
+	@property
+	def selected (self):
+		# Property as shorthand alias to current selection.
+		return self.selections[self.selection[0]][self.selection[1]]
 
-	def set_select (self, state, addrs=None):
-		# Set the indicated item's selected state.
-		self.select(addrs).is_selected = state
+	@selected.setter
+	def selected (self, state):
+		# Property as shorthand alias to setting selection state.
+		self.selections[self.selection[0]][self.selection[1]].is_selected = state
 
 	def reset (self):
 		# Resets the menu 'cursor' back to the default.
-		self.set_select(False)
+		self.selected = False
 		self.selection = [0, 0]
-		self.set_select(True)
+		self.selected = True
+
+	def setdir (self):
+		# Resets cursor movement.
+		self.moving = None
+		self.moved = False
+		self.movetime = self.basetime
 
 	# Refer to the function of the same name above.
 	render_text = render_text
@@ -337,9 +361,7 @@ class Menu (AnimatedSprite):
 			rsurf = pg.Surface(self.rect.size)
 			rsurf.fill(0xFF00FF)
 			rsurf.set_colorkey(0xFF00FF)
-
 			method(self, rsurf, *args, **kwargs)
-
 			screen.blit(rsurf, self.rect)
 		return wrapper
 
@@ -350,81 +372,52 @@ class Menu (AnimatedSprite):
 			self.user.state = 'quit'
 		elif event.type == pg.KEYDOWN:
 			if event.key == pg.K_LEFT or event.key == pg.K_UP or event.key == pg.K_RIGHT or event.key == pg.K_DOWN:
-				# Reset the move attributes.
-				self.up = False
-				self.down = False
-				self.left = False
-				self.right = False
-				self.moved = False
-				self.movetime = self.basetime
-
+				# Set direction.
+				self.setdir()
 				if event.key == pg.K_LEFT:
-					self.left = True
+					self.moving = 'l'
 				elif event.key == pg.K_UP:
-					self.up = True
+					self.moving = 'u'
 				elif event.key == pg.K_RIGHT:
-					self.right = True
+					self.moving = 'r'
 				elif event.key == pg.K_DOWN:
-					self.down = True
+					self.moving = 'd'
 		elif event.type == pg.KEYUP:
 			if event.key == pg.K_LEFT or event.key == pg.K_UP or event.key == pg.K_RIGHT or event.key == pg.K_DOWN:
-				self.up = False
-				self.down = False
-				self.left = False
-				self.right = False
-				self.moved = False
-				self.movetime = self.basetime
+				self.setdir()
 		return event
+
+	def eval_move (self, coord, movedir):
+		# Handles the frame counter.
+		if not self.moved:
+			self.selection[coord] += movedir
+			self.moved = True
+		else:
+			self.movetime -= 1
+			if self.movetime < 1:
+				self.selection[coord] += movedir
+				self.movetime = self.shortime
+		# Wrap around.
+		if self.selection[coord] > self.range[coord] - 1:
+			self.selection[coord] = 0
+		elif self.selection[coord] < 0:
+			self.selection[coord] = self.range[coord] - 1
 
 	def run (self, surf=screen):
 		# Update the movement values per frame.
 		self.eval_input()
 		# Move selection.
-		self.set_select(False)
-		if self.left:
-			if not self.moved:
-				self.selection[0] -= 1
-				self.moved = True
-			else:
-				self.movetime -= 1
-				if self.movetime < 1:
-					self.selection[0] -= 1
-					self.movetime = self.shortime
-		elif self.up:
-			if not self.moved:
-				self.selection[1] -= 1
-				self.moved = True
-			else:
-				self.movetime -= 1
-				if self.movetime < 1:
-					self.selection[1] -= 1
-					self.movetime = self.shortime
-		elif self.right:
-			if not self.moved:
-				self.selection[0] += 1
-				self.moved = True
-			else:
-				self.movetime -= 1
-				if self.movetime < 1:
-					self.selection[0] += 1
-					self.movetime = self.shortime
-		elif self.down:
-			if not self.moved:
-				self.selection[1] += 1
-				self.moved = True
-			else:
-				self.movetime -= 1
-				if self.movetime < 1:
-					self.selection[1] += 1
-					self.movetime = self.shortime
-		# Wrap around.
-		for i in range(2):
-			if self.selection[i] > self.range[i] - 1:
-				self.selection[i] = 0
-			elif self.selection[i] < 0:
-				self.selection[i] = self.range[i] - 1
-		# print self.selection
-		self.set_select(True)
+		self.selected = False
+		if self.moving == 'l':
+			self.eval_move(0,-1)
+		elif self.moving == 'u':
+			self.eval_move(1,-1)
+		elif self.moving == 'r':
+			self.eval_move(0, 1)
+		elif self.moving == 'd':
+			self.eval_move(1, 1)
+		self.selected = True
+		# Update the selections.
 		for items in self.selections:
 			for item in items:
 				item.update(surf)

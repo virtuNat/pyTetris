@@ -7,9 +7,6 @@ except ImportError:
 	print("Something fucking jammed in here:")
 	raise
 
-menu_bg = env.AnimatedSprite(pg.Surface(env.screct.size))
-menu_bg.image.fill(0x008080)
-
 class MainMenu (env.Menu):
 	"""
 	The MainMenu object represents the main menu of the game.
@@ -55,7 +52,7 @@ class MainMenu (env.Menu):
 					self.user.state = 'quit'
 
 	def run (self):
-		menu_bg.draw(env.screen)
+		self.menu_bg.draw(env.screen)
 		self.draw(env.screen)
 		super().run()
 		pg.display.flip()
@@ -110,7 +107,7 @@ class PlayMenu (env.Menu):
 				self.user.state = 'main_menu'
 
 	def run (self):
-		menu_bg.draw(env.screen)
+		self.menu_bg.draw(env.screen)
 		self.draw(env.screen)
 		super().run()
 		pg.display.flip()
@@ -167,7 +164,7 @@ class HiScoreMenu (env.Menu):
 			self.render_text('{}:{:02d}:{:02d}'.format(d_scores[i][3]//6000, d_scores[i][3]//100%60, d_scores[i][3]%100), 0x000000, surf, topright=(self.rect.w - 30, 120 + i * 35))
 
 	def run (self):
-		menu_bg.draw(env.screen)
+		self.menu_bg.draw(env.screen)
 		self.draw(env.screen)
 		super().run()
 		self.display_scores()
@@ -221,7 +218,7 @@ class PauseMenu (env.Menu):
 					self.user.state = 'game'
 					self.user.reset()
 					self.user.resetgame = True
-					restart_music()
+					env.restart_music()
 					self.reset()
 				elif self.selected.action == 'options':
 					pass
@@ -348,7 +345,7 @@ class LossMenu (env.Menu):
 					self.user.state = 'game'
 					self.user.reset()
 					self.user.resetgame = True
-					restart_music()
+					env.restart_music()
 					self.reset()
 				elif self.selected.action == 'settings':
 					pass

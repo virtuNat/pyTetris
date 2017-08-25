@@ -7,7 +7,10 @@ except ImportError:
 	raise
 
 class ContextMan:
-	"Generic file manager."
+	"""
+	Generic file manager.
+	Note that the return value of __enter__ is the object, and not the file.
+	"""
 	__slots__ = ('sfile', 'bckup', 'eflag')
 
 	def __init__ (self, name):
@@ -76,19 +79,7 @@ class SFH (ContextMan):
 	"""
 	SFH, or ScoreFileHandler is a class that is built to, as the name suggests,
 	handle score file data.
-
-	It's a context manager inteded to be used with the built-in with statement
-	to handle saving and pulling of score data safely.
-
-	To use this, do:
-	with SFH(scorefilename) as sfh:
-		# Do scorefile operations...
-
-	Do note that sfh is a reference to the context manager object itself, not the
-	file object. The file object is referenced under the sfile attribute.
 	"""
-	__slots__ = ('sfile', 'bckup', 'eflag')
-
 	def __init__ (self):
 		# Scorefile of the filename hiscore.dat
 		super().__init__('hiscore.dat')
@@ -157,11 +148,11 @@ class SFH (ContextMan):
 		slists[g].append(entry)
 		# Sort the entries.
 		# Lines cleared third.
-		slists[g].sort(key = lambda s: s[9])
+		slists[g].sort(key=lambda s: s[9])
 		# Time second.
-		slists[g].sort(key = lambda s: s[10])
+		slists[g].sort(key=lambda s: s[10])
 		# Score first.
-		slists[g].sort(key = lambda s: s[8], reverse=True)
+		slists[g].sort(key=lambda s: s[8], reverse=True)
 		# Remove the old last entry and re-arrange the score lists into a single list.
 		slists[g].pop()
 		slists = slists[0] + slists[1] + slists[2]
@@ -175,8 +166,6 @@ class SFH (ContextMan):
 
 class Config (ContextMan):
 	""
-	__slots__ = ('sfile', 'bckup', 'eflag')
-	
 	def __init__ (self):
 		# Config file is of the name config.dat.
 		super().__init__('config.dat')
