@@ -1,7 +1,10 @@
 "Contains class definitions for custom context managers used in the game."
 try:
 	import os
+	import sys
 	import struct
+	import itertools
+	from traceback import print_exception
 except ImportError:
 	print("A module must've shat itself:")
 	raise
@@ -29,7 +32,7 @@ class ContextMan:
 				self.load()
 		except IOError:
 			self.bckup = open(bname, 'wb+')
-			# If the backup is missing, check if the original score data exists.
+			# If the backup is missing, check if the original data exists.
 			try:
 				self.sfile = open(name, 'rb+')
 				self.backup()
@@ -66,7 +69,7 @@ class ContextMan:
 		self.bckup.write(self.sfile.read())
 
 	def load (self):
-		# Refresh the scorefile using the backup.
+		# Refresh the file using the backup.
 		self.sfile.seek(0)
 		self.bckup.seek(0)
 		self.sfile.truncate()
@@ -123,20 +126,25 @@ class SFH (ContextMan):
 			print('Scorefile length is invalid!')
 			return self.decode()
 		self.sfile.seek(0)
-		try:
-			# Each score is a set of 24 bytes, the first eight of which stand for the name entered.
-			scorelists = [struct.unpack('>ccccccccQLL', self.sfile.read(24)) for i in range(30)]
-		except Exception as e:
-			# If an exception is thrown during reading, first attempt to load from the backup.
-			# If that still fails, reset the scores (erasing score data, whoops).
-			self.validate()
-			# Echo exception details to the console.
-			print(e)
-			return self.decode()
-		if not splitname:
-			# The splitname argument is True when the data needs to be read raw, rather than formatted for easy display.
-			scorelists = [[scorelists[i][j].decode() if j < 8 else scorelists[i][j] for j in range(11)] for i in range(30)]
-			scorelists = [[''.join(scorelists[i][:8]), scorelists[i][8], scorelists[i][9], scorelists[i][10]] for i in range(30)]
+		scorelists = [ ]
+		for _ in range(30):
+			try:
+				# Each score is a set of 24 bytes, the first eight of which stand for the name entered.
+				rawname = struct.unpack('>cccccccc', self.sfile.read(8))
+				if splitname:
+					# The splitname argument is True when the data needs to be read raw, rather than formatted for easy display.
+					score = [*rawname, *struct.unpack('>QLL', self.sfile.read(16))]
+				else:
+					name = ''.join(c.decode() for c in rawname)
+					score = [name, *struct.unpack('>QLL', self.sfile.read(16))]
+				scorelists.append(score)
+			except (struct.error, TypeError):
+				# If an exception is thrown during reading, first attempt to load from the backup.
+				# If that still fails, reset the scores (erasing score data, whoops).
+				self.validate()
+				# Echo exception details to the console.
+				print_exception(*sys.exc_info(), file=sys.stdout)
+				return self.decode()
 		return [scorelists[:10], scorelists[10:20], scorelists[20:]]
 
 	def encode (self, gtype, entry):
@@ -146,16 +154,11 @@ class SFH (ContextMan):
 		slists = self.decode(True)
 		# Add the new entry.
 		slists[g].append(entry)
-		# Sort the entries.
-		# Lines cleared third.
-		slists[g].sort(key=lambda s: s[9])
-		# Time second.
-		slists[g].sort(key=lambda s: s[10])
-		# Score first.
-		slists[g].sort(key=lambda s: s[8], reverse=True)
+		# Sort the entries: Lines cleared third, time second, and score first.
+		slists[g].sort(key=lambda s: (-s[-3], s[-1], s[-2]))
 		# Remove the old last entry and re-arrange the score lists into a single list.
 		slists[g].pop()
-		slists = slists[0] + slists[1] + slists[2]
+		slists = itertools.chain.from_iterable(slists)
 		# Apply change to scorefile.
 		self.sfile.seek(0)
 		self.sfile.truncate()
@@ -179,4 +182,4 @@ class Config (ContextMan):
 		return "Config()"
 
 	def reset (self):
-		pass
+		raise NotImplementedError

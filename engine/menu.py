@@ -243,22 +243,23 @@ class SaveMenu (env.Menu):
 	if they would have a high score that beats one on the record.
 	"""
 	def __init__(self, user):
+		self.loss_bg = pg.Surface(env.screct.size)
 		bg = pg.Surface((500, 150))
 		bg.fill(0x0C87CD)
 		super().__init__(user, bg, center=env.screct.center)
 		self.name = u''
 		self.placestring = '10th'
 
-	def render_place (self, _i):
+	def render_place (self, i):
 		# Turns place number into a string.
-		if _i == 0:
+		if i == 0:
 			self.placestring = '1st'
-		elif _i == 1:
+		elif i == 1:
 			self.placestring = '2nd'
-		elif _i == 2:
+		elif i == 2:
 			self.placestring = '3rd'
 		else:
-			self.placestring = str(_i + 1) + 'th'
+			self.placestring = str(i+1) + 'th'
 
 	def eval_timer (self):
 		# Evaluates timer value based on game type.
@@ -294,7 +295,6 @@ class SaveMenu (env.Menu):
 	@env.Menu.render
 	def display_score (self, surf):
 		self.render_text('You got the '+self.placestring+' place high score!', 0x000000, surf, midtop=(self.rect.w / 2, 15))
-
 		self.render_text('Enter Name:', 0x000000, surf, topleft=(15, 40))
 		self.render_text('Score:', 0x000000, surf, topright=(self.rect.w / 2 - 40, 40))
 		self.render_text('Lines:', 0x000000, surf, topleft=(self.rect.w / 2 + 40, 40))
@@ -307,6 +307,7 @@ class SaveMenu (env.Menu):
 		self.render_text('{}:{:02d}:{:02d}'.format(_time // 6000, _time // 100 % 60, _time % 100), 0x000000, surf, topright=(self.rect.w - 20, 65))
 
 	def run (self):
+		env.screen.blit(self.loss_bg, (0, 0))
 		self.draw(env.screen)
 		self.eval_input()
 		self.display_score()

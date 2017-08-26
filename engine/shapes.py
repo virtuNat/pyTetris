@@ -1,6 +1,8 @@
 "Contains class definitions for objects that handle pyTetris block logic."
 try:
 	import random
+	import operator
+	import itertools
 	import pygame as pg
 	import engine.environment as env
 except ImportError:
@@ -26,11 +28,19 @@ class Block (env.FreeSprite):
 	def __getattr__ (self, name):
 		if name == 'linkhash':
 			# Returns a single number representing all the links.
-			return hex(sum(map(lambda x: 2 ** x, self.links)))[-1:]
+			return hex(sum(map(lambda x: 2 ** x, self.links)))[2]
 
 	def __repr__ (self):
 		# eval() usable expression to create a block similar to this.
 		return "Block("+repr(self.relpos)+", "+str(self.color)+", "+repr(self.links)+")"
+
+	def __hash__ (self):
+		return object.__hash__(self)
+
+	def __eq__ (self, other):
+		# If two blocks would use the same texture they're equal regardless of other internal values.
+		if isinstance(other, Block):
+			return self.cliprect == other.cliprect
 
 	def copy (self, ghost=False, fallen=False):
 		# Create new Block object that is the same as this one.
@@ -136,7 +146,13 @@ class Shape (env.FreeGroup):
 
 	def copy (self, ghost=False):
 		# Copy this shape, creating a new Shape object in the process.
-		return Shape(self.form, self.state, self.pos, ghost)
+		if self.form < 7:
+			return Shape(self.form, self.state, self.pos, ghost)
+		else:
+			dest = Shape(self.form, self.state, self.pos, ghost)
+			dest.empty()
+			for block in self: dest.add(block)
+			return dest
 
 	def rotate (self, clockwise):
 		# SRS implementation of Tetrimino rotation. It is done relative to shape.pos unless it's an I.
@@ -165,13 +181,13 @@ class Shape (env.FreeGroup):
 
 	def translate (self, disp):
 		# Move the tetrimino given a displacement.
-		self.pos = [self.pos[i] + disp[i] for i in range(2)]			
+		self.pos = [self.pos[0]+disp[0], self.pos[1]+disp[1]]
 			
 	def draw (self, anchor=None, forced=False):
 		# The anchor is the coordinate of the topleft pixel of the tile represented in self.pos.
 		# Draw the tetrimino to the screen.
 		if anchor is None:
-			anchor = [275 + self.pos[0] * 25, 10 + self.pos[1] * 25]
+			anchor = [275 + self.pos[0]*25, 10 + self.pos[1]*25]
 		elif forced:
 			if self.form < 1:
 				anchor[1] -= 12
@@ -225,9 +241,9 @@ class Grid (env.AnimatedSprite):
 			"Grid Colormap and Linkmap:\n"
 			""+''.join(
 				[
-					''.join([str(block.color) if type(block) is Block else ' ' for block in row]+ #Colormap
+					''.join([str(block.color) if isinstance(block, Block) else ' ' for block in row]+ #Colormap
 					['|']+
-					[str(block.linkhash) if type(block) is Block else ' ' for block in row])+'\n' #Linkmap
+					[str(block.linkhash) if isinstance(block, Block) else ' ' for block in row])+'\n' #Linkmap
 				for row in self]
 			)
 		)
@@ -241,11 +257,15 @@ class Grid (env.AnimatedSprite):
 		return iter(self.cells)
 
 	def __len__ (self):
-		# Alias to obtaining the total height of the grid.
+		# Returns the grid height.
 		return len(self.cells)
 
+	def __contains__ (self, block):
+		# Allows in container tests for blocks.
+		return block in itertools.chain.from_iterable(self)
+
 	def set_cells (self):
-		# Sets the Matrix to have nothing but the buffer blocks.
+		# Reset Matrix.
 		self.cells = [[None if j<=21 else Block([i, j], 7, fallen=True) for i in range(10)] for j in range(23)]
 
 	def add_garbage (self):
@@ -314,34 +334,34 @@ class Grid (env.AnimatedSprite):
 	def cascade (self, base_row):
 		# Drop floating blocks during non-naive line clear methods.
 		# Set the fallen flag of all blocks above and one row below to False, which means they're 'floating'.
-		for i in range(base_row + 1, -1, -1):
-			for j in range(10):
-				if self[i][j] is not None and self[i][j].color != 7:
-					self[i][j].fallen = False
+		for row in self[:base_row + 2]:
+			for block in row:
+				if block is not None and block.color != 7:
+					block.fallen = False
 		# For each row, cut a set of temporary shapes from it to allow to fall.
 		locked_shapes = True
 		while locked_shapes:
-			for i in range(21, -1, -1):
+			for row in self[::-1]:
 				# locked_shapes is True when one of the shapes in the row is blocked from falling by another shape.
 				locked_shapes = False
 				tempshapes = [ ]
-				for j in range(10):
+				for block in row:
 					# Add blocks that both exist and have not fallen yet.
-					if self[i][j] is None or self[i][j].fallen:
+					if block is None or block.fallen:
 						continue
 					# Create new blank temporary shape.
 					tempshape = Shape()
 					# Cut connected blocks from grid to the shape.
 					if self.user.cleartype == 1:
 						# Perform a blind flood fill if the method is sticky.
-						self.flood_fill(tempshape, (i, j))
+						self.flood_fill(tempshape, block.relpos[::-1])
 					elif self.user.cleartype == 2:
 						# Perform a flood fill considering which blocks are linked if the method is cascade.
-						self.link_fill(tempshape, (i, j))
-					for pos, block in zip(tempshape.poslist, tempshape):
+						self.link_fill(tempshape, block.relpos[::-1])
+					for block in tempshape:
 						# If the block being tested isn't connected to the block below it, then the shape it's a part of is blocked.
 						if (self.user.cleartype == 1
-							or (2 not in block.links and self[pos[1] + 1][pos[0]] is not None)):
+							or (2 not in block.links and self[block.relpos[1] + 2][block.relpos[0] + 4] is not None)):
 							locked_shapes = True
 							# Cut the shape back to the matrix.
 							self.paste_shape(tempshape)

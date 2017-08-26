@@ -18,14 +18,14 @@ screct = screen.get_rect()
 clock = pg.time.Clock()
 user = User()
 
-def cond_all (iterator, condition=lambda i:i):
+def cond_all (iterator, condition=bool):
 	"Conditional all function. Return False if at least one element fails the conditional expression."
 	for element in iterator:
 		if not condition(element):
 			return False
 	return True
 
-def cond_any (iterator, condition=lambda i:i):
+def cond_any (iterator, condition=bool):
 	"Conditional any function. Return True if at least one element fulfills the conditional expression."
 	for element in iterator:
 		if condition(element):
@@ -88,14 +88,14 @@ def screenshot ():
 
 def convert_hexcolor (hexcolor):
 	# Avoids an annoying bug where the 24-bit hexcolor is mapped to GGBBAA instead of RRGGBB.
-	if color < 2 ** 24:
-		color = color * 256 + 255 # Assume opaque
-	return pg.Color(color)
+	if hexcolor < 2 ** 24:
+		hexcolor = hexcolor * 256 + 255 # Assume opaque
+	return pg.Color(hexcolor)
 
 def render_text (obj=None, text='', color=0, surf=screen, **anchors):
 	# Takes an object with a font attribute, and creates a text surface that it blits to a given surface.
 	# Can be added to any class as a method, provided that class instances have a font attribute.
-	if type(color) is int:
+	if isinstance(color, int):
 		color = convert_hexcolor(color)
 	try:
 		tsurf = obj.font.render(text, 0, color)
@@ -294,7 +294,7 @@ class Menu (AnimatedSprite):
 	The Menu class is the superclass to all menu objects, and will handle basic menu operations,
 	such as moving along selections, positioning, and committing.
 	"""
-	menu_bg = env.AnimatedSprite(pg.Surface(env.screct.size))
+	menu_bg = AnimatedSprite(pg.Surface(screct.size))
 	menu_bg.image.fill(0x008080)
 
 	def __init__ (self, user, bg=None, rect=None, **pos):

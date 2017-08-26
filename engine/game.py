@@ -2,19 +2,20 @@
 try:
 	import sys
 	import random
-	import traceback
+	from traceback import print_exception
 	import pygame as pg
 	import engine.environment as env
 	import engine.filehandler as fh
 	import engine.menu as menu
 	from engine.shapes import (Shape, Grid)
+	from engine.sortedcollections import SortedCollection as SC
 except ImportError:
 	print("A tetrimino fell through the fucking floor:")
 	raise
 
 pg.display.set_caption('pyTetris')
 
-class Tetris:
+class Core:
 	"""
 	The actual game logic.
 
@@ -195,7 +196,9 @@ class Tetris:
 
 				elif event.key == pg.K_SPACE: # Hard drop
 					self.user.hard_flag = True
-					self.eval_fallen(self.ghostshape.pos[1] - self.freeshape.pos[1])
+					posdif = self.ghostshape.pos[1] - self.freeshape.pos[1]
+					self.freeshape.pos = self.ghostshape.pos[:]
+					self.eval_fallen(posdif)
 
 			if self.user.debug:
 				# Cheats for testing purposes.
@@ -377,9 +380,6 @@ class Tetris:
 
 	def eval_fallen (self, posdif):
 		# Evaluates what happens to a tetrimino when it has just fallen.
-		# If the hard drop was triggered, move the active piece immediately to the ghost image.
-		if self.user.hard_flag:
-			self.freeshape.pos = self.ghostshape.pos[:]
 		# Reset DAS if the user has not let go of the key yet.
 		if self.shift_frame == 0 and self.shift_dir != '0':
 			self.shift_frame = self.shift_delay
@@ -443,37 +443,29 @@ class Tetris:
 			g = 0 if self.user.gametype == 'arcade' else 1 if self.user.gametype == 'timed' else 2
 			with fh.SFH() as sfh:
 				# Load scorelist only for that game type.
-				scorelist = sfh.decode()[g]
+				scorelist = SC(sfh.decode()[g], key=lambda s: (-s[1], s[3], s[2]))
 			# Initialize place pointer, then find out which place it belongs, if any.
-			j = 10
-			for i in range(9, -1, -1):
-				if scorelist[i][1] < self.user.score:
-					j = i
-				elif (scorelist[i][1] == self.user.score
-					and scorelist[i][2] >= self.user.lines_cleared):
-					j = i
-					if (scorelist[i][2] == self.user.lines_cleared 
-						and scorelist[i][3] >= self.user.timer):
-						j = i
-			if j < 10:
-				self.save_menu.render_place(j)
+			newscore = ['Pajitnov', self.user.score, self.user.lines_cleared, self.user.timer]
+			scorelist.insert(newscore)
+			i = scorelist.index(newscore)
+			if i < 10:
+				self.save_menu.render_place(i)
 				self.user.state = 'save_menu'
+			self.save_menu.loss_bg.blit(env.screen, (0, 0))
 			self.loss_menu.render_loss(env.screen)
 			pg.mixer.music.fadeout(2500)
 
-	def ramp_arcade (self, oldlevel):
+	def ramp_arcade (self):
 		# Manages the difficulty of arcade mode.
 		# Increase the level based on the number of lines cleared, and check if there's a difference.
 		self.user.eval_level()
 		# Responsible for making the Arcade mode more faster-paced over time.
-		if oldlevel < self.user.level:
-			# Increase game speed based on level.
-			self.fall_delay = 45 - (40*self.user.level//180) if self.user.level < 180 else 5
-			self.soft_delay = 6 - (5*self.user.level//90) if self.user.level < 90 else 1
-			self.entry_delay = 30 - (20*self.user.level//150) if self.user.level < 150 else 10
-			self.shift_delay = 25 - (17*self.user.level//120) if self.user.level < 120 else 8
-			self.shift_fdelay = 4 - (3*self.user.level//60) if self.user.level < 60 else 1
-		# Start periodically spawning garbage lines at high enough levels.
+		self.fall_delay = 45 - (40*self.user.level//180) if self.user.level < 180 else 5
+		self.soft_delay = 6 - (5*self.user.level//90) if self.user.level < 90 else 1
+		self.entry_delay = 30 - (20*self.user.level//150) if self.user.level < 150 else 10
+		self.shift_delay = 25 - (17*self.user.level//120) if self.user.level < 120 else 8
+		self.shift_fdelay = 4 - (3*self.user.level//60) if self.user.level < 60 else 1
+		# Start periodically spawning garbage lines at level 64.
 		if self.user.level >= 64:
 			if self.line_frame == 0:
 				self.grid.add_garbage()
@@ -481,7 +473,7 @@ class Tetris:
 				if self.check_collision(self.freeshape):
 					self.freeshape.translate(( 0,-1))
 					self.newshape.translate(( 0,-1))
-				# At max level, make them spawn faster.
+				# Make them spawn faster every 64 levels.
 				if self.user.level >= 256:
 					self.line_frame = 120
 				elif self.user.level >= 192:
@@ -492,7 +484,7 @@ class Tetris:
 					self.line_frame = 300
 			else: self.line_frame -= 1
 
-	# Refer to runtime.render_text()
+	# Refer to env.render_text()
 	render_text = env.render_text
 
 	def display (self):
@@ -523,7 +515,8 @@ class Tetris:
 			self.render_text('Time Left:', 0xFFFFFF, topleft=(lalign, talign + spacing * 6))
 			self.render_text(
 				'{}:{:02d}:{:02d}'.format(self.user.timer // 60000, self.user.timer//1000 % 60, self.user.timer%1000 // 10),
-				0xFFFFFF, topright=(ralign, talign + spacing*7))
+				0xFFFFFF, topright=(ralign, talign + spacing*7)
+			)
 
 		# Display ghost piece.
 		if self.user.showghost:
@@ -596,7 +589,7 @@ class Tetris:
 			
 		# Evaluate arcade mode difficulty.
 		if self.user.gametype == 'arcade':
-			self.ramp_arcade(self.user.level)
+			self.ramp_arcade()
 		# Evaluate timer at the end of the frame.
 		self.user.eval_timer(env.clock.get_time())
 		# Evaluate special states.
@@ -619,21 +612,21 @@ class Tetris:
 		pg.display.flip()
 
 def init (argv):
-	# Evaluate command line parameters.
-	env.user.eval_argv(argv)
 	# Local class definition of the object that will run the game.
-	class PyTetris:
+	class Game:
 		"Runs an instance of pyTetris."
 		__slots__ = ()
 		# Initialize game objects.
 		user = env.user
+		# Evaluate command line parameters.
+		user.eval_argv(argv)
 		play_menu = menu.PlayMenu(user)
 		score_menu = menu.HiScoreMenu(user)
 		pause_menu = menu.PauseMenu(user)
 		save_menu = menu.SaveMenu(user)
 		loss_menu = menu.LossMenu(user)
 		main_menu = menu.MainMenu(user, score_menu)
-		game = Tetris(user, pause_menu, save_menu, loss_menu)
+		game = Core(user, pause_menu, save_menu, loss_menu)
 
 		def __str__(self):
 			# Supposed to dump the game state at the time of calling, but not yet fully implemented.
@@ -661,8 +654,8 @@ def init (argv):
 						print(self)
 					with open('crashdump.log', 'w') as dump:
 						dump.write(str(self))
-						traceback.print_exception(*sys.exc_info(), file=dump)
+						print_exception(*sys.exc_info(), file=dump)
 					raise
 			# Clean up when the program ends.
 			env.quit()
-	return PyTetris()
+	return Game()

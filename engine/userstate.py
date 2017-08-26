@@ -7,6 +7,13 @@ class User:
 
 	In this case, it tracks tetris difficulty values and handles score data.
 	"""
+	__slots__ = (
+		'state', 'gametype', 'resetgame', 'debug',
+		'cleartype', 'enablekicks', 'showghost', 'linktiles',
+		'hard_flag', 'twist_flag', 'tspin_flag',
+		'score', 'last_score', 'lines_cleared', 'level', 'timer',
+		'line_list', 'combo_ctr', 'current_combo'
+	)
 	# Score data.
 	drop_score = 1. # The base score added when a block lands.
 	dist_factor = 0.6 # The multiplier per unit distance dropped by a piece in a soft or hard drop.
@@ -22,6 +29,7 @@ class User:
 		# Global state variables.
 		self.state = 'main_menu'
 		self.gametype = 'free'
+		self.resetgame = False # True if the game needs to be reset.
 		# Eventually will be modifiable in the Options Menu.
 		# Default settings are good for Modern Tetris.
 		# Retro Tetris would use cleartype 0, enablekicks, showghost, and linktiles False.
@@ -33,7 +41,6 @@ class User:
 		self.hard_flag = False # True if the piece was hard-dropped.
 		self.twist_flag = False # True if the tetrimino twisted into place.
 		self.tspin_flag = False # True if a T-spin occured.
-		self.resetgame = False # True if the game needs to be reset.
 		self.eval_argv(None)
 		self.reset()
 
