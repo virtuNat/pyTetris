@@ -117,6 +117,10 @@ Alpha 1.1.8:
 - Updated repository layout to be easier to navigate.
 - Added a -d option so that debug mode can be manually activated.
 
+Alpha 1.1.9:
+- Partially mplemented a logging feature.
+- Made optimizations to some slow and difficult to read parts in the file handling code.
+
 Alpha 1.2.0: (to be worked on)
 - Add new textures for score, main, and game menus
 - Add help menu and settings menu
