@@ -443,7 +443,7 @@ class Core:
 			g = 0 if self.user.gametype == 'arcade' else 1 if self.user.gametype == 'timed' else 2
 			with fh.SFH() as sfh:
 				# Load scorelist only for that game type.
-				scorelist = SC(sfh.decode()[g], key=lambda s: (-s[1], s[3], s[2]))
+				scorelist = SC(sfh.decode()[g], key=lambda s: (-s[-3], s[-1], s[-2]))
 			# Initialize place pointer, then find out which place it belongs, if any.
 			newscore = ['Pajitnov', self.user.score, self.user.lines_cleared, self.user.timer]
 			scorelist.insert(newscore)
@@ -489,6 +489,7 @@ class Core:
 
 	def display (self):
 		# Display relevant stuff.
+		# Set reference values for easy editing.
 		lalign = 113
 		ralign = 253
 		talign = self.grid.rect.y + 177

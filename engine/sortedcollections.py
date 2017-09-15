@@ -1,3 +1,4 @@
+# Copied from https://code.activestate.com/recipes/577197-sortedcollection/
 from bisect import bisect_left, bisect_right
 
 class SortedCollection(object):
